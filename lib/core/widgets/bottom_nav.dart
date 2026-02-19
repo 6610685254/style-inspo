@@ -7,12 +7,15 @@ class AppBottomNav extends StatelessWidget {
   void _onTap(BuildContext context, int index) {
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, '/social');
+        Navigator.pushReplacementNamed(context, '/');
         break;
       case 1:
         Navigator.pushReplacementNamed(context, '/wardrobe');
         break;
       case 2:
+        Navigator.pushReplacementNamed(context, '/discover');
+        break;
+      case 3:
         Navigator.pushReplacementNamed(context, '/profile');
         break;
     }
@@ -31,9 +34,10 @@ class AppBottomNav extends StatelessWidget {
       type: BottomNavigationBarType.fixed,
 
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Social'),
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         BottomNavigationBarItem(icon: Icon(Icons.checkroom), label: 'Wardrobe'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'User'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Discover'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
       ],
     );
   }

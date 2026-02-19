@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/bottom_nav.dart';
 import 'ootd_menu.dart';
+import '../../asset/style_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -9,7 +10,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-         automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false,
         title: const Text('OOTD'),
         actions: [
           Builder(
@@ -64,7 +65,7 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        '99% of people look like you',
+                        'Other styles you might like.',
                         style: TextStyle(fontSize: 14),
                       ),
                       const SizedBox(height: 12),
@@ -72,10 +73,35 @@ class HomeScreen extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushNamed(context, '/wardrobe');
                         },
-                        child: const Text('To Wardrobe →'),
+                        child: const Text(
+                          'Suggest new →',
+                          style: TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
                     ],
                   ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                StyleButton(
+                  label: 'Style Labs',
+                  icon: Icons.checkroom_outlined,
+                  color: Color(0xFF4A7C8C),
+                  onPressed: () => Navigator.pushNamed(context, '/wardrobe'),
+                ),
+
+                const Spacer(),
+                StyleButton(
+                  label: 'Styles Planner',
+                  icon: Icons.calendar_month_outlined,
+                  color: const Color(0xFF2D2926),
+                  onPressed: () => Navigator.pushNamed(context, '/planner'),
                 ),
               ],
             ),

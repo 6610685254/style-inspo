@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../home/ootd_menu.dart';
 
-class SocialScreen extends StatelessWidget {
-  const SocialScreen({super.key});
+class DiscoverScreen extends StatelessWidget {
+  const DiscoverScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Social'),
+        title: const Text('Discover'),
         actions: [
           Builder(
             builder: (context) => IconButton(
@@ -33,7 +33,7 @@ class SocialScreen extends StatelessWidget {
         ],
       ),
 
-      bottomNavigationBar: const AppBottomNav(current: 0),
+      bottomNavigationBar: const AppBottomNav(current: 2),
     );
   }
 }

@@ -22,14 +22,6 @@ class OotdMenu extends StatelessWidget {
             const Divider(),
 
             ListTile(
-              title: const Text('OOTD'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/');
-              },
-            ),
-
-            ListTile(
               title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
