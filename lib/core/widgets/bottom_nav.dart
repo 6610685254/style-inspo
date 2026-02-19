@@ -1,24 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:ootd_app/features/discover/discover_screen.dart';
+import 'package:ootd_app/features/home/home_screen.dart';
+import 'package:ootd_app/features/wardrobe/wardrobe_screen.dart';
+import '../../features/profile/profile_screen.dart';
 
 class AppBottomNav extends StatelessWidget {
   final int current;
   const AppBottomNav({super.key, required this.current});
 
   void _onTap(BuildContext context, int index) {
+    if (index == current) return;
+
+    Widget page;
+
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, '/');
+        page = const HomeScreen();
         break;
       case 1:
-        Navigator.pushReplacementNamed(context, '/wardrobe');
+        page = const WardrobeScreen();
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, '/discover');
+        page = const DiscoverScreen();
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, '/profile');
+        page = const ProfileScreen();
         break;
+      default:
+        page = const HomeScreen();
     }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
   }
 
   @override
@@ -26,13 +41,11 @@ class AppBottomNav extends StatelessWidget {
     return BottomNavigationBar(
       currentIndex: current,
       onTap: (i) => _onTap(context, i),
-
       backgroundColor: Colors.white,
       selectedItemColor: Colors.black,
       unselectedItemColor: Colors.grey,
       showUnselectedLabels: true,
       type: BottomNavigationBarType.fixed,
-
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         BottomNavigationBarItem(icon: Icon(Icons.checkroom), label: 'Wardrobe'),

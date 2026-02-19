@@ -25,7 +25,10 @@ class WardrobeScreen extends StatelessWidget {
       endDrawer: const OotdMenu(),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, '/wardrobe/add'),
+        onPressed: () {
+          Navigator.of(context).pushNamed('/wardrobe/add');
+        },
+        tooltip: 'Add Item',
         child: const Icon(Icons.add),
       ),
 

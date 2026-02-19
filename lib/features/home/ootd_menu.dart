@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../settings/settings_screen.dart';
 
 class OotdMenu extends StatelessWidget {
   const OotdMenu({super.key});
@@ -24,15 +26,21 @@ class OotdMenu extends StatelessWidget {
             ListTile(
               title: const Text('Settings'),
               onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/settings');
+                Navigator.pop(context); // close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
               },
             ),
 
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {},
+              onTap: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.pop(context); // close drawer
+              },
             ),
           ],
         ),
