@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../home/ootd_menu.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WardrobeScreen extends StatelessWidget {
   const WardrobeScreen({super.key});
@@ -28,8 +29,18 @@ class WardrobeScreen extends StatelessWidget {
         child: const Icon(Icons.add),
       ),
 
-      body: const Center(
-        child: Text('Wardrobe grid'),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () async {
+            await FirebaseFirestore.instance.collection('test').add({
+              'message': 'Firebase is working 🔥',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+            print("Data added!");
+          },
+          child: const Text("Test Firestore"),
+        ),
       ),
 
       bottomNavigationBar: const AppBottomNav(current: 1),
