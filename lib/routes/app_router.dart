@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../features/home/home_screen.dart';
-import '../features/social/social_screen.dart';
-import '../features/social/posts_screen.dart';
-import '../features/social/posting_screen.dart';
+import '../features/discover/discover_screen.dart';
+import '../features/discover/posts_screen.dart';
+import '../features/discover/posting_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
 import '../features/wardrobe/add_wardrobe_screen.dart';
 import '../features/wardrobe/take_photo_screen.dart';
@@ -18,7 +18,7 @@ import '../features/settings/about_screen.dart';
 class AppRouter {
   static Map<String, WidgetBuilder> routes = {
     '/': (_) => const HomeScreen(),
-    '/social': (_) => const SocialScreen(),
+    '/discover': (_) => const DiscoverScreen(),
     '/posts': (_) => const PostsScreen(),
     '/posting': (_) => const PostingScreen(),
     '/wardrobe': (_) => const WardrobeScreen(),
