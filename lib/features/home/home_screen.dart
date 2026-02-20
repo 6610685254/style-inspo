@@ -3,7 +3,6 @@ import '../../core/widgets/bottom_nav.dart';
 import 'ootd_menu.dart';
 import '../../asset/style_button.dart';
 
-
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -94,7 +93,7 @@ class HomeScreen extends StatelessWidget {
                   label: 'Style Labs',
                   icon: Icons.checkroom_outlined,
                   color: Color(0xFF4A7C8C),
-                  onPressed: () => Navigator.pushNamed(context, '/wardrobe'),
+                  onPressed: () => Navigator.pushNamed(context, '/style-lab'),
                 ),
 
                 const Spacer(),
