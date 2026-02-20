@@ -104,9 +104,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('assets/images/image.png', height: 80),
+                Image.asset('assets/images/logo.png', height: 240),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 0),
                 TextField(
                   controller: _usernameController,
                   decoration: const InputDecoration(labelText: "Username"),
