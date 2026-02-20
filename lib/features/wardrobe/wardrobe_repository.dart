@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class WardrobeRepository {
   WardrobeRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
@@ -149,6 +150,60 @@ class WardrobeRepository {
     await _suggestionsCollection(uid).doc(suggestionId).update({
       'status': 'saved',
       'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // NEW METHOD: Call Genkit to generate an outfit
+  Future<String?> generateAIOutfit() async {
+    final uid = userId;
+    if (uid == null) return null;
+
+    try {
+      // 1. Call the Cloud Function we wrote above
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'generateOutfitSuggestion',
+      );
+      final result = await callable.call();
+
+      // 2. Extract the AI's response (which is typed perfectly because of Zod!)
+      final data = result.data as Map<String, dynamic>;
+      final title = data['title'] as String;
+      final clothingIds = List<String>.from(data['clothingIds']);
+      final reasoning = data['reasoning'] as String;
+
+      // 3. Save the new AI suggestion to Firestore using your existing collection
+      final ref = await _suggestionsCollection(uid).add({
+        'title': title,
+        'clothingIds': clothingIds,
+        'reasoning': reasoning, // Save the AI's reasoning!
+        'generatedBy': 'genkit:gemini-1.5-flash',
+        'status': 'suggested',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return ref.id;
+    } catch (e) {
+      print("Genkit Error: $e");
+      return null;
+    }
+  }
+
+  // Add a new clothing item with its image URL and metadata
+  Future<void> addClothingItem({
+    required String imageUrl,
+    required String type,
+    required String color,
+  }) async {
+    final uid = userId;
+    if (uid == null) throw Exception("User not logged in");
+
+    await _clothesCollection(uid).add({
+      'imageUrl': imageUrl,
+      'type': type, // e.g., 'top', 'bottom'
+      'color': color,
+      'tags': [], // Initialize empty tags, can be added later
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 }
