@@ -83,67 +83,114 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Widget buildSettingItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Widget page,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 0, 0, 0),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () => _open(context, page),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          ListTile(
-            title: const Text('Theme'),
-            onTap: () => _open(context, const ThemeScreen()),
-          ),
-          ListTile(
-            title: const Text('Language'),
-            onTap: () => _open(context, const LanguageScreen()),
-          ),
-          ListTile(
-            title: const Text('Notification center'),
-            onTap: () => _open(context, const NotificationScreen()),
-          ),
-          ListTile(
-            title: const Text('Help center'),
-            onTap: () => _open(context, const HelpScreen()),
-          ),
-          ListTile(
-            title: const Text('About app'),
-            onTap: () => _open(context, const AboutScreen()),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text(
-              'Delete account',
-              style: TextStyle(color: Colors.red),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            buildSettingItem(
+              context,
+              icon: Icons.language,
+              title: "Language",
+              page: const LanguageScreen(),
             ),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('Delete Account'),
-                  content: const Text(
-                    'Are you sure you want to permanently delete your account?',
+            buildSettingItem(
+              context,
+              icon: Icons.notifications,
+              title: "Notification Center",
+              page: const NotificationScreen(),
+            ),
+            buildSettingItem(
+              context,
+              icon: Icons.help_outline,
+              title: "Help Center",
+              page: const HelpScreen(),
+            ),
+            buildSettingItem(
+              context,
+              icon: Icons.info_outline,
+              title: "About Us",
+              page: const AboutScreen(),
+            ),
+            buildSettingItem(
+              context,
+              icon: Icons.color_lens_outlined,
+              title: "Theme",
+              page: const ThemeScreen(),
+            ),
+
+            const SizedBox(height: 30),
+
+            //Delete Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _deleteAccount(context);
-                      },
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-              );
-            },
-          ),
-        ],
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Delete Account'),
+                      content: const Text(
+                        'Are you sure you want to permanently delete your account?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _deleteAccount(context);
+                          },
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Delete Account",
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
