@@ -7,6 +7,7 @@ import '../features/discover/posting_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
 import '../features/wardrobe/add_wardrobe_screen.dart';
 import '../features/wardrobe/take_photo_screen.dart';
+import '../features/wardrobe/stylelab.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/theme_screen.dart';
@@ -17,13 +18,14 @@ import '../features/settings/about_screen.dart';
 
 class AppRouter {
   static Map<String, WidgetBuilder> routes = {
-    '/': (_) => const HomeScreen(),
+    '/home': (_) => const HomeScreen(),
     '/discover': (_) => const DiscoverScreen(),
     '/posts': (_) => const PostsScreen(),
     '/posting': (_) => const PostingScreen(),
     '/wardrobe': (_) => const WardrobeScreen(),
     '/wardrobe/add': (_) => const AddWardrobeScreen(),
     '/wardrobe/camera': (_) => const TakePhotoScreen(),
+    '/style-lab': (_) => const StyleLabScreen(),
     '/profile': (_) => const ProfileScreen(),
     '/settings': (_) => const SettingsScreen(),
     '/settings/theme': (_) => const ThemeScreen(),
