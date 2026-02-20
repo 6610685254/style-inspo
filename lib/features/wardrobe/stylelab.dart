@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart'; // Make sure this is in pubspec.yaml
 import 'package:flutter/material.dart';
 
 import 'wardrobe_repository.dart';
@@ -14,87 +15,58 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
   bool _isGenerating = false;
 
+  // 1. Upgraded to call your new Genkit AI Cloud Function!
   Future<void> _generateSuggestion() async {
     setState(() => _isGenerating = true);
 
     try {
-      final items = await _repository.getWardrobeItems();
-      if (items.length < 2) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Add at least 2 wardrobe items to generate a look.'),
-          ),
-        );
-        return;
-      }
+      // Call the Firebase Cloud Function we created
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'generateOutfitSuggestion',
+      );
+      final response = await callable.call();
 
-      final tops = items.where((doc) {
-        final type = (doc.data()['type'] ?? '').toString().toLowerCase();
-        return type.contains('shirt') ||
-            type.contains('top') ||
-            type.contains('jacket');
-      }).toList();
+      // The AI returns { title: "...", clothingIds: [...], reasoning: "..." }
+      final result = response.data;
 
-      final bottoms = items.where((doc) {
-        final type = (doc.data()['type'] ?? '').toString().toLowerCase();
-        return type.contains('pants') ||
-            type.contains('skirt') ||
-            type.contains('shorts');
-      }).toList();
-
-      final selected = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
-      if (tops.isNotEmpty && bottoms.isNotEmpty) {
-        selected
-          ..add(tops.first)
-          ..add(bottoms.first);
-      } else {
-        selected
-          ..add(items.first)
-          ..add(items[1]);
-      }
-
-      final clothingIds = selected.map((item) => item.id).toList();
-      final title =
-          'Suggested Look ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}';
-
+      // Save the AI's suggestion to Firestore using your repository
       await _repository.createSuggestion(
-        title: title,
-        clothingIds: clothingIds,
-        confidence: 0.76,
+        title: result['title'] ?? 'AI Styled Look',
+        clothingIds: List<String>.from(result['clothingIds'] ?? []),
+        generatedBy: 'genkit:v1',
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('New outfit suggestion generated.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('AI Outfit Generated! ✨')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating outfit: $e')));
     } finally {
-      if (mounted) {
-        setState(() => _isGenerating = false);
-      }
+      if (mounted) setState(() => _isGenerating = false);
     }
   }
 
+  // 2. Added the missing save method
   Future<void> _saveOutfit(
-    DocumentSnapshot<Map<String, dynamic>> suggestion,
+    QueryDocumentSnapshot<Map<String, dynamic>> suggestion,
   ) async {
     final data = suggestion.data();
-    if (data == null) return;
-
-    final clothingIds = List<String>.from(data['clothingIds'] ?? []);
 
     await _repository.saveSuggestedOutfit(
       suggestionId: suggestion.id,
       title: (data['title'] ?? 'Saved Outfit').toString(),
-      clothingIds: clothingIds,
+      clothingIds: List<String>.from(data['clothingIds'] ?? []),
     );
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Outfit saved to your collection.')),
-    );
+    // Update the local status so the button turns grey
+    await suggestion.reference.update({'status': 'saved'});
   }
 
+  // 3. Complete Build UI pieced together from your snippets
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,18 +74,22 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: FilledButton.icon(
-              onPressed: _isGenerating ? null : _generateSuggestion,
-              icon: _isGenerating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_awesome),
-              label: Text(
-                _isGenerating ? 'Generating...' : 'Generate Outfit Suggestion',
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _isGenerating ? null : _generateSuggestion,
+                icon: _isGenerating
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome),
+                label: Text(
+                  _isGenerating ? 'AI is thinking...' : 'Generate AI Outfit',
+                ),
               ),
             ),
           ),
@@ -125,7 +101,12 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Error loading suggestions'));
+                }
+
                 final docs = snapshot.data?.docs ?? [];
+
                 if (docs.isEmpty) {
                   return const Center(
                     child: Text(
@@ -149,13 +130,14 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                       child: ListTile(
                         title: Text(
                           (data['title'] ?? 'Suggested Outfit').toString(),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text('$itemCount pieces • status: $status'),
                         trailing: FilledButton.tonal(
                           onPressed: status == 'saved'
                               ? null
                               : () => _saveOutfit(suggestion),
-                          child: const Text('Save'),
+                          child: Text(status == 'saved' ? 'Saved' : 'Save'),
                         ),
                       ),
                     );
