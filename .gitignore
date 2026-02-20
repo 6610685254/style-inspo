@@ -45,7 +45,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-*/GeneratedPluginRegistrant.*
-*/generated_plugins.*
-*/generated_plugin_registrant.*
-*/android/app/google-services.json
+**/GeneratedPluginRegistrant.*
+**/generated_plugins.*
+**/generated_plugin_registrant.*
+**/android/app/google-services.json
