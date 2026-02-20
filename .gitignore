@@ -48,3 +48,4 @@ app.*.map.json
 */GeneratedPluginRegistrant.*
 */generated_plugins.*
 */generated_plugin_registrant.*
+android/app/google-services.json
