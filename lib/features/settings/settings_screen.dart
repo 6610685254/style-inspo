@@ -92,7 +92,7 @@ class SettingsScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 0, 0, 0),
+        color: const Color.fromARGB(255, 236, 236, 236),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
