@@ -11,7 +11,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _inputController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
@@ -20,15 +20,18 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _inputController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    final input = _inputController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (input.isEmpty || password.isEmpty) {
       setState(() {
-        _errorMessage = "Please enter email and password";
+        _errorMessage = "Please enter username/email and password";
       });
       return;
     }
@@ -39,11 +42,8 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-      // No need to navigate manually if using authStateChanges()
+      await _authService.login(input, password);
+      // authStateChanges() will handle navigation
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = e.message ?? "Login failed";
@@ -59,6 +59,65 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController();
+    String? error;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Reset Password"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Enter your email and we will send you a reset link."),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: "Email",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 10),
+                Text(error!, style: const TextStyle(color: Colors.red)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: emailController.text.trim(),
+                  );
+
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Password reset email sent!"),
+                      ),
+                    );
+                  }
+                } on FirebaseAuthException catch (e) {
+                  error = e.message;
+                }
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,33 +129,36 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  "OOTD Login",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Image.asset('assets/images/image.png', height: 80),
+
                 const SizedBox(height: 40),
 
-                // Email Field
+                // Email or Username
                 TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _inputController,
                   decoration: const InputDecoration(
-                    labelText: "Email",
+                    labelText: "Email or Username",
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Password Field
+                // Password
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: "Password",
                     border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    child: const Text("Forgot Password?"),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -109,7 +171,6 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 10),
                 ],
 
-                // Login Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -121,25 +182,20 @@ class _LoginPageState extends State<LoginPage> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text("Login"),
+                        : const Text("Sign In"),
                   ),
                 ),
 
                 const SizedBox(height: 15),
 
-                // Register Button
                 TextButton(
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
                     );
                   },
-                  child: const Text(
-                    "Don't have an account? Register",
-                  ),
+                  child: const Text("Don't have an account? Register"),
                 ),
               ],
             ),
