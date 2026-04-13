@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../auth/Login_Screen.dart';
 import '../settings/settings_screen.dart';
 
 class OotdMenu extends StatelessWidget {
@@ -38,8 +39,15 @@ class OotdMenu extends StatelessWidget {
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
               onTap: () async {
+                Navigator.pop(context); // close drawer first
                 await FirebaseAuth.instance.signOut();
-                Navigator.pop(context); // close drawer
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true)
+                      .pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                }
               },
             ),
           ],

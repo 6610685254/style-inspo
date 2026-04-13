@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../features/home/home_screen.dart';
 import '../features/discover/discover_screen.dart';
-import '../features/discover/posts_screen.dart';
 import '../features/discover/posting_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
 import '../features/wardrobe/add_wardrobe_screen.dart';
 import '../features/wardrobe/take_photo_screen.dart';
 import '../features/wardrobe/stylelab.dart';
+import '../features/planner/planner_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/theme_screen.dart';
@@ -20,12 +20,12 @@ class AppRouter {
   static Map<String, WidgetBuilder> routes = {
     '/home': (_) => const HomeScreen(),
     '/discover': (_) => const DiscoverScreen(),
-    '/posts': (_) => const PostsScreen(),
     '/posting': (_) => const PostingScreen(),
     '/wardrobe': (_) => const WardrobeScreen(),
     '/wardrobe/add': (_) => const AddWardrobeScreen(),
     '/wardrobe/camera': (_) => const TakePhotoScreen(),
     '/style-lab': (_) => const StyleLabScreen(),
+    '/planner': (_) => const StylesPlannerScreen(),
     '/profile': (_) => const ProfileScreen(),
     '/settings': (_) => const SettingsScreen(),
     '/settings/theme': (_) => const ThemeScreen(),
