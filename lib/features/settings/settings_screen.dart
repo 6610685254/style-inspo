@@ -6,6 +6,7 @@ import 'help_screen.dart';
 import 'about_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth/Login_Screen.dart';
+import '../../core/widgets/bottom_nav.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -92,7 +93,7 @@ class SettingsScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 236, 236, 236),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
@@ -108,6 +109,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
+      bottomNavigationBar: const AppBottomNav(current: -1),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

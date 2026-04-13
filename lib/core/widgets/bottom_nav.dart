@@ -38,11 +38,12 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasSelection = current >= 0 && current <= 3;
     return BottomNavigationBar(
-      currentIndex: current,
+      currentIndex: hasSelection ? current : 0,
       onTap: (i) => _onTap(context, i),
       backgroundColor: Colors.white,
-      selectedItemColor: Colors.black,
+      selectedItemColor: hasSelection ? Colors.black : Colors.grey,
       unselectedItemColor: Colors.grey,
       showUnselectedLabels: true,
       type: BottomNavigationBarType.fixed,

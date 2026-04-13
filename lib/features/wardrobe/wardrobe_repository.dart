@@ -194,15 +194,17 @@ class WardrobeRepository {
     required String imageUrl,
     required String type,
     required String color,
+    String season = 'all',
   }) async {
     final uid = userId;
     if (uid == null) throw Exception("User not logged in");
 
     await _clothesCollection(uid).add({
       'imageUrl': imageUrl,
-      'type': type, // e.g., 'top', 'bottom'
+      'type': type,
       'color': color,
-      'tags': [], // Initialize empty tags, can be added later
+      'season': season,
+      'tags': [],
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

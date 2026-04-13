@@ -16,21 +16,22 @@ class StyleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final foreground = Theme.of(context).colorScheme.onSurface;
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 28, color: color),
+      icon: Icon(icon, size: 28, color: foreground),
       label: Text(
         label,
         style: TextStyle(
-          color: color,
+          color: foreground,
           fontSize: 16,
-          fontWeight: FontWeight.w400, // Use your app's specific font here
+          fontWeight: FontWeight.w400,
         ),
       ),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        side: BorderSide(color: color, width: 1.5),
-        shape: const StadiumBorder(), // Gives that perfect pill shape
+        side: BorderSide(color: foreground.withOpacity(0.5), width: 1.5),
+        shape: const StadiumBorder(),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
