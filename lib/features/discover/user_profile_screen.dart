@@ -43,8 +43,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           .get(),
     ]);
 
-    final userDoc = results[0] as DocumentSnapshot<Map<String, dynamic>>;
-    final followDoc = results[1] as DocumentSnapshot<Map<String, dynamic>>;
+    final userDoc = results[0];
+    final followDoc = results[1];
 
     if (mounted) {
       setState(() {
