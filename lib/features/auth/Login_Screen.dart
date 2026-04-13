@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth/auth_service.dart';
 import 'Register_Screen.dart';
+import '../home/home_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,7 +44,13 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await _authService.login(input, password);
-      // authStateChanges() will handle navigation
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+      return;
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = e.message ?? "Login failed";
