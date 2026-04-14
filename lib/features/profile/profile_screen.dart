@@ -61,16 +61,16 @@ class _ProfileScreenState extends State<ProfileScreen>
     });
   }
 
-  Future<void> _loadPostCount() async {
+  void _loadPostCount() {
     final uid = _uid;
     if (uid == null) return;
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('posts')
-          .where('uid', isEqualTo: uid)
-          .get();
+    FirebaseFirestore.instance
+        .collection('posts')
+        .where('uid', isEqualTo: uid)
+        .snapshots()
+        .listen((snap) {
       if (mounted) setState(() => _postCount = snap.docs.length);
-    } catch (_) {}
+    });
   }
 
   Future<void> _changeAvatar() async {
@@ -205,12 +205,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                   right: 0,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.black,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt,
-                        color: Colors.white, size: 14),
+                    child: Icon(Icons.camera_alt,
+                        color: theme.colorScheme.surface, size: 14),
                   ),
                 ),
               ],
@@ -294,7 +294,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         stream: FirebaseFirestore.instance
                             .collection('posts')
                             .where('uid', isEqualTo: uid)
-                            .orderBy('createdAt', descending: true)
                             .snapshots(),
                         emptyLabel: 'No posts yet',
                       ),
@@ -343,8 +342,21 @@ class _PostsGrid extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading posts',
+                style: TextStyle(color: Colors.grey.shade500)),
+          );
+        }
         final docs = snapshot.data?.docs ?? [];
-        if (docs.isEmpty) {
+        // Sort newest first client-side (avoids composite index requirement)
+        final sorted = [...docs]..sort((a, b) {
+            final aTime = a.data()['createdAt'] as Timestamp?;
+            final bTime = b.data()['createdAt'] as Timestamp?;
+            if (aTime == null || bTime == null) return 0;
+            return bTime.compareTo(aTime);
+          });
+        if (sorted.isEmpty) {
           return Center(
             child: Text(emptyLabel,
                 style: TextStyle(color: Colors.grey.shade500)),
@@ -357,9 +369,9 @@ class _PostsGrid extends StatelessWidget {
             crossAxisSpacing: 2,
             mainAxisSpacing: 2,
           ),
-          itemCount: docs.length,
+          itemCount: sorted.length,
           itemBuilder: (context, index) {
-            final imageUrl = docs[index].data()['imageUrl'] as String?;
+            final imageUrl = sorted[index].data()['imageUrl'] as String?;
             return imageUrl != null && imageUrl.isNotEmpty
                 ? Image.network(imageUrl, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) =>

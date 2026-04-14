@@ -64,10 +64,6 @@ class _StylesPlannerScreenState extends State<StylesPlannerScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Add'),
           ),
@@ -250,8 +246,6 @@ class _StylesPlannerScreenState extends State<StylesPlannerScreen> {
 
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addPlan,
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Add Plan'),
       ),

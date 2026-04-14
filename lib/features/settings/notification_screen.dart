@@ -62,7 +62,7 @@ class _Toggle extends StatelessWidget {
       title: Text(label),
       value: value,
       onChanged: onChanged,
-      activeThumbColor: Colors.black,
+      activeThumbColor: Theme.of(context).colorScheme.onSurface,
     );
   }
 }

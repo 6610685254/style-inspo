@@ -81,6 +81,8 @@ class _PostingScreenState extends State<PostingScreen> {
           .get();
       final username =
           (userDoc.data()?['username'] as String?) ?? 'User';
+      final photoUrl =
+          (userDoc.data()?['photoUrl'] as String?) ?? '';
 
       final imageUrl = await _uploadImage(_imageFile!);
       if (imageUrl == null) throw Exception('Image upload failed');
@@ -88,6 +90,7 @@ class _PostingScreenState extends State<PostingScreen> {
       await FirebaseFirestore.instance.collection('posts').add({
         'uid': uid,
         'username': username,
+        'photoUrl': photoUrl,
         'imageUrl': imageUrl,
         'description': _descController.text.trim(),
         'savedOutfit': _selectedSavedOutfit ?? '',

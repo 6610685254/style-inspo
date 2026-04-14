@@ -25,6 +25,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   final _commentController = TextEditingController();
   bool _submitting = false;
 
+  // Live author data
+  Map<String, dynamic>? _authorData;
+
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
   @override
@@ -33,6 +36,35 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _likeCount = (widget.data['likes'] as int?) ?? 0;
     _checkLiked();
     _checkSaved();
+    _streamAuthor();
+    _streamLikeCount();
+  }
+
+  void _streamAuthor() {
+    final authorUid = (widget.data['uid'] ?? '').toString();
+    if (authorUid.isEmpty) return;
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(authorUid)
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists && mounted) {
+        setState(() => _authorData = doc.data());
+      }
+    });
+  }
+
+  void _streamLikeCount() {
+    FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.postId)
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists && mounted) {
+        final count = (doc.data()?['likes'] as int?) ?? 0;
+        setState(() => _likeCount = count);
+      }
+    });
   }
 
   @override
@@ -76,26 +108,31 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final postRef =
         FirebaseFirestore.instance.collection('posts').doc(widget.postId);
 
+    // Update UI immediately
     if (_liked) {
-      await likeRef.delete();
-      await userLikeRef.delete();
-      await postRef.update({'likes': (_likeCount - 1).clamp(0, 99999)});
       setState(() {
         _liked = false;
         _likeCount = (_likeCount - 1).clamp(0, 99999);
       });
+      try {
+        await likeRef.delete();
+        await userLikeRef.delete();
+        await postRef.update({'likes': _likeCount});
+      } catch (_) {}
     } else {
-      await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
-      await userLikeRef.set({
-        'postId': widget.postId,
-        'likedAt': FieldValue.serverTimestamp(),
-        'imageUrl': widget.data['imageUrl'] ?? '',
-      });
-      await postRef.update({'likes': _likeCount + 1});
       setState(() {
         _liked = true;
         _likeCount++;
       });
+      try {
+        await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
+        await userLikeRef.set({
+          'postId': widget.postId,
+          'likedAt': FieldValue.serverTimestamp(),
+          'imageUrl': widget.data['imageUrl'] ?? '',
+        });
+        await postRef.update({'likes': _likeCount});
+      } catch (_) {}
     }
   }
 
@@ -139,6 +176,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
       _commentController.clear();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to post comment: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -148,9 +191,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget build(BuildContext context) {
     final data = widget.data;
     final imageUrl = data['imageUrl'] as String?;
-    final username = (data['username'] ?? 'User').toString();
     final authorUid = (data['uid'] ?? '').toString();
-    final photoUrl = (data['photoUrl'] ?? '').toString();
+    // Use live author data if available, fallback to post data
+    final username = (_authorData?['username'] as String?) ??
+        (data['username'] ?? 'User').toString();
+    final photoUrl = (_authorData?['photoUrl'] as String?) ??
+        (data['photoUrl'] ?? '').toString();
     final description = (data['description'] ?? '').toString();
     final savedOutfit = (data['savedOutfit'] ?? '').toString();
     final wardrobeItem = (data['wardrobeItem'] ?? '').toString();

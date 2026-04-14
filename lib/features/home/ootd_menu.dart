@@ -10,16 +10,18 @@ class OotdMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width * 0.5;
 
+    final theme = Theme.of(context);
     return Drawer(
       width: width,
-      backgroundColor: Colors.white.withOpacity(0.75),
+      backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Icon(Icons.menu, size: 28, color: Colors.black54),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Icon(Icons.menu, size: 28,
+                  color: theme.colorScheme.onSurfaceVariant),
             ),
 
             const Divider(),
