@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../core/widgets/bottom_nav.dart';
 import '../home/ootd_menu.dart';
@@ -17,29 +18,86 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
   bool _isGenerating = false;
 
+  // Cache of wardrobe items: id -> data
+  Map<String, Map<String, dynamic>> _wardrobeCache = {};
+
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWardrobeCache();
+  }
+
+  Future<void> _loadWardrobeCache() async {
+    try {
+      final items = await _repository.getWardrobeItems();
+      if (mounted) {
+        setState(() {
+          _wardrobeCache = {
+            for (final doc in items) doc.id: doc.data(),
+          };
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _generateSuggestion() async {
+    if (_wardrobeCache.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add clothes to your wardrobe first.')),
+      );
+      return;
+    }
+
     setState(() => _isGenerating = true);
     try {
       final callable = FirebaseFunctions.instance.httpsCallable(
         'generateOutfitSuggestion',
       );
       final response = await callable.call();
-      final result = response.data;
+      final result = response.data as Map<String, dynamic>;
+
+      final title = (result['title'] as String?) ?? 'AI Styled Look';
+      final clothingIds = List<String>.from(result['clothingIds'] ?? []);
+      final reasoning = (result['reasoning'] as String?) ?? '';
 
       await _repository.createSuggestion(
-        title: result['title'] ?? 'AI Styled Look',
-        clothingIds: List<String>.from(result['clothingIds'] ?? []),
-        generatedBy: 'genkit:v1',
+        title: title,
+        clothingIds: clothingIds,
+        generatedBy: 'genkit:gemini-1.5-flash',
       );
+
+      // Also save reasoning to the suggestion doc (createSuggestion doesn't support it)
+      // We'll update the most recent doc for now
+      final uid = _uid;
+      if (uid != null && reasoning.isNotEmpty) {
+        final snap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('suggestions')
+            .orderBy('createdAt', descending: true)
+            .limit(1)
+            .get();
+        if (snap.docs.isNotEmpty) {
+          await snap.docs.first.reference.update({'reasoning': reasoning});
+        }
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('New outfit suggested!')),
       );
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      final msg = e.message ?? 'Failed to generate outfit.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        const SnackBar(content: Text('Something went wrong. Try again.')),
       );
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -55,7 +113,6 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       title: (data['title'] ?? 'Saved Outfit').toString(),
       clothingIds: List<String>.from(data['clothingIds'] ?? []),
     );
-    await suggestion.reference.update({'status': 'saved'});
   }
 
   @override
@@ -84,20 +141,19 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Today's Outfit section
               const Text(
                 "Today's Outfit",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
 
-              if (latest != null) ...[
+              if (latest != null)
                 _OutfitCard(
                   data: latest.data(),
-                  suggestion: latest,
+                  wardrobeCache: _wardrobeCache,
                   onSave: () => _saveOutfit(latest),
-                ),
-              ] else ...[
+                )
+              else
                 Container(
                   height: 160,
                   decoration: BoxDecoration(
@@ -111,11 +167,9 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                     style: TextStyle(color: Colors.grey.shade500),
                   ),
                 ),
-              ],
 
               const SizedBox(height: 16),
 
-              // Suggest New Outfit button
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -143,7 +197,6 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
 
               const SizedBox(height: 28),
 
-              // Saved Looks section
               const Text(
                 'Saved Looks',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -160,35 +213,65 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   final data = doc.data();
                   final title =
                       (data['title'] ?? 'Saved Outfit').toString();
-                  final count =
-                      (data['clothingIds'] as List?)?.length ?? 0;
+                  final clothingIds =
+                      List<String>.from(data['clothingIds'] ?? []);
+                  final imageUrls = clothingIds
+                      .map((id) =>
+                          (_wardrobeCache[id]?['imageUrl'] as String?) ?? '')
+                      .where((u) => u.isNotEmpty)
+                      .take(3)
+                      .toList();
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Row(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        if (imageUrls.isNotEmpty)
+                          SizedBox(
+                            height: 80,
+                            child: Row(
+                              children: imageUrls.map((url) {
+                                return Expanded(
+                                  child: Image.network(url,
+                                      fit: BoxFit.cover,
+                                      height: 80,
+                                      errorBuilder: (_, __, ___) => Container(
+                                            color: Colors.grey.shade300,
+                                          )),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          child: Row(
                             children: [
-                              Text(title,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                              Text('$count pieces',
-                                  style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12)),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(title,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600)),
+                                    Text('${clothingIds.length} pieces',
+                                        style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.bookmark,
+                                  color: Colors.black, size: 20),
                             ],
                           ),
                         ),
-                        Icon(Icons.bookmark,
-                            color: Colors.black, size: 20),
                       ],
                     ),
                   );
@@ -204,12 +287,12 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
 
 class _OutfitCard extends StatelessWidget {
   final Map<String, dynamic> data;
-  final QueryDocumentSnapshot<Map<String, dynamic>> suggestion;
+  final Map<String, Map<String, dynamic>> wardrobeCache;
   final VoidCallback onSave;
 
   const _OutfitCard({
     required this.data,
-    required this.suggestion,
+    required this.wardrobeCache,
     required this.onSave,
   });
 
@@ -219,60 +302,105 @@ class _OutfitCard extends StatelessWidget {
     final reasoning = (data['reasoning'] ?? '').toString();
     final status = (data['status'] ?? 'suggested').toString();
     final isSaved = status == 'saved';
+    final clothingIds = List<String>.from(data['clothingIds'] ?? []);
+
+    // Resolve images from the wardrobe cache
+    final imageUrls = clothingIds
+        .map((id) => (wardrobeCache[id]?['imageUrl'] as String?) ?? '')
+        .where((u) => u.isNotEmpty)
+        .toList();
 
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(12),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 15)),
-          if (reasoning.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(reasoning,
-                style:
-                    TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-          ],
-          const SizedBox(height: 12),
-          // Placeholder outfit items grid
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 6,
-            mainAxisSpacing: 6,
-            childAspectRatio: 1,
-            children: List.generate(
-              3,
-              (_) => Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
+          // Clothing images strip
+          if (imageUrls.isNotEmpty)
+            SizedBox(
+              height: 130,
+              child: Row(
+                children: imageUrls.take(3).map((url) {
+                  return Expanded(
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      height: 130,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.checkroom, color: Colors.grey),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            )
+          else if (clothingIds.isNotEmpty)
+            // IDs exist but not in cache yet — show loading placeholders
+            SizedBox(
+              height: 130,
+              child: Row(
+                children: List.generate(
+                  clothingIds.length.clamp(1, 3),
+                  (_) => Expanded(
+                    child: Container(
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.checkroom,
-                    color: Colors.grey, size: 28),
+              ),
+            )
+          else
+            Container(
+              height: 100,
+              color: Colors.grey.shade200,
+              child: const Center(
+                child: Icon(Icons.checkroom, size: 40, color: Colors.grey),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: isSaved ? null : onSave,
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                    color: isSaved ? Colors.grey : Colors.black),
-              ),
-              child: Text(
-                isSaved ? 'Saved' : 'Save',
-                style: TextStyle(
-                    color: isSaved ? Colors.grey : Colors.black),
-              ),
+
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15)),
+                if (reasoning.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(reasoning,
+                      style: TextStyle(
+                          color: Colors.grey.shade600, fontSize: 13)),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: isSaved ? null : onSave,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                          color: isSaved ? Colors.grey : Colors.black),
+                    ),
+                    child: Text(
+                      isSaved ? 'Saved' : 'Save Look',
+                      style: TextStyle(
+                          color: isSaved ? Colors.grey : Colors.black),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
