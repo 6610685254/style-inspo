@@ -71,6 +71,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'username': username,
         'email': email,
+        'photoUrl': '',
+        'followers': 0,
+        'following': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -111,8 +114,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   TextField(
                     controller: _usernameController,
+                    style: const TextStyle(color: Colors.black),
                     decoration: const InputDecoration(
                       labelText: "Username",
+                      labelStyle: TextStyle(color: Colors.grey),
                       border: UnderlineInputBorder(),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
@@ -124,8 +129,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    style: const TextStyle(color: Colors.black),
                     decoration: const InputDecoration(
                       labelText: "Email",
+                      labelStyle: TextStyle(color: Colors.grey),
                       border: UnderlineInputBorder(),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
@@ -137,8 +144,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    style: const TextStyle(color: Colors.black),
                     decoration: InputDecoration(
                       labelText: "Password",
+                      labelStyle: const TextStyle(color: Colors.grey),
                       border: const UnderlineInputBorder(),
                       enabledBorder: const UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
@@ -160,8 +169,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
+                    style: const TextStyle(color: Colors.black),
                     decoration: InputDecoration(
                       labelText: "Confirm Password",
+                      labelStyle: const TextStyle(color: Colors.grey),
                       border: const UnderlineInputBorder(),
                       enabledBorder: const UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
@@ -202,7 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       child: isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(

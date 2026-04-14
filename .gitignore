@@ -68,3 +68,4 @@ package-lock.json
 
 # Claude Code local session
 .claude
+google-services .json

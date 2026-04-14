@@ -72,8 +72,8 @@ class _LoginPageState extends State<LoginPage> {
 
     await showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
           title: const Text("Reset Password"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -104,8 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                   await FirebaseAuth.instance.sendPasswordResetEmail(
                     email: emailController.text.trim(),
                   );
-
-                  if (mounted) {
+                  if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -114,14 +113,14 @@ class _LoginPageState extends State<LoginPage> {
                     );
                   }
                 } on FirebaseAuthException catch (e) {
-                  error = e.message;
+                  setDialogState(() => error = e.message);
                 }
               },
               child: const Text("Send"),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -146,8 +145,10 @@ class _LoginPageState extends State<LoginPage> {
                   TextField(
                     controller: _inputController,
                     keyboardType: TextInputType.emailAddress,
+                    style: const TextStyle(color: Colors.black),
                     decoration: const InputDecoration(
                       labelText: "Email or Username",
+                      labelStyle: TextStyle(color: Colors.grey),
                       border: UnderlineInputBorder(),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
@@ -160,8 +161,10 @@ class _LoginPageState extends State<LoginPage> {
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
+                    style: const TextStyle(color: Colors.black),
                     decoration: const InputDecoration(
                       labelText: "Password",
+                      labelStyle: TextStyle(color: Colors.grey),
                       border: UnderlineInputBorder(),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
