@@ -15,9 +15,9 @@ Requirements for this milestone. All build on the existing working app.
 
 ### Style Lab
 
-- [ ] **SLAB-01**: User can save an AI-generated suggestion as a named outfit (persisted to Firestore)
-- [ ] **SLAB-02**: User sees a clear error message when AI generation fails (e.g. network error, function error)
-- [ ] **SLAB-03**: User sees a clear empty state with instruction when wardrobe has no items and they try to generate
+- [x] **SLAB-01**: User can save an AI-generated suggestion as a named outfit (persisted to Firestore)
+- [x] **SLAB-02**: User sees a clear error message when AI generation fails (e.g. network error, function error)
+- [x] **SLAB-03**: User sees a clear empty state with instruction when wardrobe has no items and they try to generate
 - [ ] **SLAB-04**: User can view a list of previously generated / saved suggestions in Style Lab
 - [ ] **SLAB-05**: User can share an outfit suggestion (title + clothing item images) via the system share sheet
 
@@ -54,9 +54,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WARD-01 | Phase 1 | Complete |
 | WARD-02 | Phase 1 | Complete |
 | WARD-03 | Phase 1 | Complete |
-| SLAB-01 | Phase 2 | Pending |
-| SLAB-02 | Phase 2 | Pending |
-| SLAB-03 | Phase 2 | Pending |
+| SLAB-01 | Phase 2 | Complete |
+| SLAB-02 | Phase 2 | Complete |
+| SLAB-03 | Phase 2 | Complete |
 | SLAB-04 | Phase 2 | Pending |
 | SLAB-05 | Phase 2 | Pending |
 
