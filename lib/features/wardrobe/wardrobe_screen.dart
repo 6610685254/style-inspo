@@ -15,6 +15,10 @@ class WardrobeScreen extends StatefulWidget {
 class _WardrobeScreenState extends State<WardrobeScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
 
+  static const List<String> _typeFilterLabels = [
+    'Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory',
+  ];
+
   final List<Color> _filterColors = [
     Colors.black,
     Colors.grey,
@@ -42,6 +46,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   ];
 
   int? _selectedColorIndex;
+  Set<String> _selectedTypes = {};
 
   Color _nameToColor(String colorName) {
     switch (colorName.toLowerCase()) {
@@ -124,6 +129,32 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
             ),
           ),
 
+          // Type filter chips
+          SizedBox(
+            height: 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              itemCount: _typeFilterLabels.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final label = _typeFilterLabels[index];
+                final selected = _selectedTypes.contains(label);
+                return FilterChip(
+                  label: Text(label),
+                  selected: selected,
+                  onSelected: (_) => setState(() {
+                    if (selected) {
+                      _selectedTypes.remove(label);
+                    } else {
+                      _selectedTypes.add(label);
+                    }
+                  }),
+                );
+              },
+            ),
+          ),
+
           // Wardrobe items
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -136,13 +167,22 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 final allDocs = snapshot.data?.docs ?? [];
 
                 // Apply color filter
-                final docs = _selectedColorIndex == null
+                final colorFiltered = _selectedColorIndex == null
                     ? allDocs
                     : allDocs.where((doc) {
                         final color =
                             (doc.data()['color'] ?? '').toString().toLowerCase();
                         return color
                             .contains(_filterColorNames[_selectedColorIndex!]);
+                      }).toList();
+
+                // Apply type filter
+                final docs = _selectedTypes.isEmpty
+                    ? colorFiltered
+                    : colorFiltered.where((doc) {
+                        final type = _capitalize(
+                            (doc.data()['type'] ?? '').toString());
+                        return _selectedTypes.contains(type);
                       }).toList();
 
 
@@ -155,9 +195,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                             size: 64, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
-                          _selectedColorIndex == null
+                          (_selectedColorIndex == null && _selectedTypes.isEmpty)
                               ? 'No clothes yet.\nTap + to add your first item.'
-                              : 'No items with that color.',
+                              : 'No items match the selected filters.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
