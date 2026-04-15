@@ -28,11 +28,11 @@ Users can get a daily AI outfit suggestion from their own wardrobe and share it 
 - ✓ Discover feed of community posts — existing
 - ✓ Dark/light theme toggle — existing
 - ✓ Help and About screens — existing
+- ✓ Wardrobe type filter — multi-select FilterChip row; tapping chips filters by type, deselect clears filter — Phase 1
 
 ### Active
 
-- [ ] Wardrobe type filter — user can tap a clothing type to show only that type (currently items are grouped but all shown; no single-type filter)
-- [ ] Style Lab UX polish — improved suggestion display, save/unsave suggestions, better error states and empty states
+- [ ] Style Lab UX polish — save suggestions, view history, share via share sheet, better error/empty states
 
 ### Out of Scope
 
@@ -83,4 +83,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after initialization*
+*Last updated: 2026-04-15 after Phase 1 complete (Wardrobe Type Filter)*
