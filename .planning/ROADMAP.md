@@ -36,12 +36,16 @@ Plans:
   3. User sees a descriptive error message (not a raw exception) when AI generation fails for any reason
   4. User sees an empty-state prompt with clear instructions when their wardrobe is empty and they attempt to generate an outfit
   5. User can tap share on a suggestion and the system share sheet opens with the outfit title and clothing item images
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 02-01-PLAN.md — Save dialog, error message mapping, empty-state widget (SLAB-01, SLAB-02, SLAB-03)
+- [ ] 02-02-PLAN.md — share_plus integration + full suggestion history section (SLAB-04, SLAB-05)
 
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Wardrobe Type Filter | 1/1 | Complete    | 2026-04-15 |
-| 2. Style Lab Polish | 0/? | Not started | - |
+| 2. Style Lab Polish | 0/2 | Not started | - |
