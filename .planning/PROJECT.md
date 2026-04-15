@@ -32,7 +32,15 @@ Users can get a daily AI outfit suggestion from their own wardrobe and share it 
 
 ### Active
 
-- [ ] Style Lab UX polish — save suggestions, view history, share via share sheet, better error/empty states
+(None — all v1 requirements shipped)
+
+### Validated (Phase 2)
+
+- ✓ Style Lab save dialog — named save with AlertDialog, persists to Firestore — Phase 2
+- ✓ Style Lab error messages — friendly mapped errors, no raw exceptions — Phase 2
+- ✓ Style Lab empty state — wardrobe empty prompt with "Go to Wardrobe" CTA — Phase 2
+- ✓ Style Lab suggestion history — scrollable past suggestions list with save/share per item — Phase 2
+- ✓ Style Lab share — share_plus text share of outfit title + clothing descriptions — Phase 2
 
 ### Out of Scope
 
@@ -83,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after Phase 1 complete (Wardrobe Type Filter)*
+*Last updated: 2026-04-15 after Phase 2 complete (Style Lab Polish) — all v1 requirements shipped*
