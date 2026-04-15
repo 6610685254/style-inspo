@@ -22,8 +22,11 @@ class _PostingScreenState extends State<PostingScreen> {
   File? _imageFile;
   bool _isPosting = false;
 
-  String? _selectedSavedOutfit;
-  String? _selectedWardrobeItem;
+  // Multi-select wardrobe items: doc id -> label
+  final Map<String, String> _selectedWardrobe = {};
+
+  // Multi-select saved outfits: doc id -> title
+  final Map<String, String> _selectedOutfits = {};
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
@@ -54,7 +57,7 @@ class _PostingScreenState extends State<PostingScreen> {
       await ref.putFile(image);
       return await ref.getDownloadURL();
     } on FirebaseException catch (e) {
-      _snack('Upload failed: ${e.code} — ${e.message}');
+      _snack('Upload failed: ${e.code}');
       return null;
     } catch (e) {
       _snack('Upload failed: $e');
@@ -74,15 +77,12 @@ class _PostingScreenState extends State<PostingScreen> {
       final uid = _uid;
       if (uid == null) throw Exception('Not logged in');
 
-      // Get username
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .get();
-      final username =
-          (userDoc.data()?['username'] as String?) ?? 'User';
-      final photoUrl =
-          (userDoc.data()?['photoUrl'] as String?) ?? '';
+      final username = (userDoc.data()?['username'] as String?) ?? 'User';
+      final photoUrl = (userDoc.data()?['photoUrl'] as String?) ?? '';
 
       final imageUrl = await _uploadImage(_imageFile!);
       if (imageUrl == null) throw Exception('Image upload failed');
@@ -93,8 +93,11 @@ class _PostingScreenState extends State<PostingScreen> {
         'photoUrl': photoUrl,
         'imageUrl': imageUrl,
         'description': _descController.text.trim(),
-        'savedOutfit': _selectedSavedOutfit ?? '',
-        'wardrobeItem': _selectedWardrobeItem ?? '',
+        // Store as lists now
+        'wardrobeItems': _selectedWardrobe.values.toList(),
+        'wardrobeItemIds': _selectedWardrobe.keys.toList(),
+        'savedOutfits': _selectedOutfits.values.toList(),
+        'savedOutfitIds': _selectedOutfits.keys.toList(),
         'likes': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -122,13 +125,7 @@ class _PostingScreenState extends State<PostingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: const [
-            CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
-            SizedBox(width: 8),
-            Text('New Post', style: TextStyle(fontSize: 15)),
-          ],
-        ),
+        title: const Text('New Post', style: TextStyle(fontSize: 15)),
         actions: [
           TextButton(
             onPressed: _isPosting ? null : _post,
@@ -172,11 +169,27 @@ class _PostingScreenState extends State<PostingScreen> {
                               size: 48, color: Colors.grey.shade500),
                           const SizedBox(height: 8),
                           Text('Tap to add photo',
-                              style:
-                                  TextStyle(color: Colors.grey.shade500)),
+                              style: TextStyle(color: Colors.grey.shade500)),
                         ],
                       )
-                    : null,
+                    : Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit,
+                                  size: 16, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ),
               ),
             ),
 
@@ -187,57 +200,29 @@ class _PostingScreenState extends State<PostingScreen> {
               controller: _descController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText:
-                    'Write the description of the post that you will create',
+                hintText: 'Write the description of your outfit...',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 border: const OutlineInputBorder(),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Select from Saved Outfits
-            const Text('Select Clothes from Saved Outfits',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-
-            if (uid != null)
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(uid)
-                    .collection('savedOutfits')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  final docs = snapshot.data?.docs ?? [];
-                  if (docs.isEmpty) {
-                    return Text('No saved outfits yet.',
-                        style: TextStyle(
-                            color: Colors.grey.shade500, fontSize: 13));
-                  }
-                  return DropdownButtonFormField<String>(
-                    value: _selectedSavedOutfit,
-                    hint: const Text('Choose an outfit'),
-                    decoration: const InputDecoration(
-                        border: OutlineInputBorder()),
-                    items: docs.map((doc) {
-                      final title =
-                          (doc.data()['title'] ?? 'Outfit').toString();
-                      return DropdownMenuItem(
-                          value: title, child: Text(title));
-                    }).toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedSavedOutfit = v),
-                  );
-                },
-              ),
-
-            const SizedBox(height: 20),
-
-            // Select from Wardrobe
-            const Text('Select Clothes from Wardrobe',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            // ── Wardrobe items ────────────────────────────────────────────
+            Row(
+              children: [
+                const Text('Tag Wardrobe Items',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(width: 8),
+                if (_selectedWardrobe.isNotEmpty)
+                  Text(
+                    '(${_selectedWardrobe.length} selected)',
+                    style:
+                        TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
 
             if (uid != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -253,23 +238,90 @@ class _PostingScreenState extends State<PostingScreen> {
                         style: TextStyle(
                             color: Colors.grey.shade500, fontSize: 13));
                   }
-                  return DropdownButtonFormField<String>(
-                    value: _selectedWardrobeItem,
-                    hint: const Text('Choose an item'),
-                    decoration: const InputDecoration(
-                        border: OutlineInputBorder()),
-                    items: docs.map((doc) {
-                      final type =
-                          (doc.data()['type'] ?? 'Item').toString();
-                      final color =
-                          (doc.data()['color'] ?? '').toString();
-                      final label =
-                          color.isNotEmpty ? '$type ($color)' : type;
-                      return DropdownMenuItem(
-                          value: label, child: Text(label));
+                  return _ItemGrid(
+                    docs: docs,
+                    selectedIds: _selectedWardrobe.keys.toSet(),
+                    labelBuilder: (data) {
+                      final type = (data['type'] ?? 'Item').toString();
+                      final color = (data['color'] ?? '').toString();
+                      return color.isNotEmpty ? '$type ($color)' : type;
+                    },
+                    onToggle: (id, label, selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedWardrobe[id] = label;
+                        } else {
+                          _selectedWardrobe.remove(id);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+
+            const SizedBox(height: 24),
+
+            // ── Saved outfits ─────────────────────────────────────────────
+            Row(
+              children: [
+                const Text('Tag Saved Outfits',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(width: 8),
+                if (_selectedOutfits.isNotEmpty)
+                  Text(
+                    '(${_selectedOutfits.length} selected)',
+                    style:
+                        TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            if (uid != null)
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(uid)
+                    .collection('savedOutfits')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) {
+                    return Text('No saved outfits yet.',
+                        style: TextStyle(
+                            color: Colors.grey.shade500, fontSize: 13));
+                  }
+                  // Outfits have no image, show as chips
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: docs.map((doc) {
+                      final title =
+                          (doc.data()['title'] ?? 'Outfit').toString();
+                      final selected =
+                          _selectedOutfits.containsKey(doc.id);
+                      return FilterChip(
+                        label: Text(title),
+                        selected: selected,
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              _selectedOutfits[doc.id] = title;
+                            } else {
+                              _selectedOutfits.remove(doc.id);
+                            }
+                          });
+                        },
+                        selectedColor:
+                            Theme.of(context).colorScheme.onSurface,
+                        labelStyle: TextStyle(
+                          color: selected
+                              ? Theme.of(context).colorScheme.surface
+                              : Theme.of(context).colorScheme.onSurface,
+                          fontSize: 13,
+                        ),
+                      );
                     }).toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedWardrobeItem = v),
                   );
                 },
               ),
@@ -279,6 +331,96 @@ class _PostingScreenState extends State<PostingScreen> {
         ),
       ),
       bottomNavigationBar: const AppBottomNav(current: 2),
+    );
+  }
+}
+
+// ─── Reusable image grid with multi-select ───────────────────────────────────
+
+class _ItemGrid extends StatelessWidget {
+  const _ItemGrid({
+    required this.docs,
+    required this.selectedIds,
+    required this.labelBuilder,
+    required this.onToggle,
+  });
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
+  final Set<String> selectedIds;
+  final String Function(Map<String, dynamic> data) labelBuilder;
+  final void Function(String id, String label, bool selected) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+      ),
+      itemCount: docs.length,
+      itemBuilder: (context, i) {
+        final doc = docs[i];
+        final data = doc.data();
+        final imageUrl = (data['imageUrl'] as String?) ?? '';
+        final label = labelBuilder(data);
+        final isSelected = selectedIds.contains(doc.id);
+
+        return GestureDetector(
+          onTap: () => onToggle(doc.id, label, !isSelected),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder(label),
+                      )
+                    : _placeholder(label),
+              ),
+              if (isSelected)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    color: Colors.black45,
+                    child: const Center(
+                      child: Icon(Icons.check_circle,
+                          color: Colors.white, size: 24),
+                    ),
+                  ),
+                ),
+              if (isSelected)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _placeholder(String label) {
+    return Container(
+      color: Colors.grey.shade300,
+      child: Center(
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 9, color: Colors.grey),
+        ),
+      ),
     );
   }
 }
