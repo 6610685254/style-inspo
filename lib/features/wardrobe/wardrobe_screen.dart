@@ -15,6 +15,10 @@ class WardrobeScreen extends StatefulWidget {
 class _WardrobeScreenState extends State<WardrobeScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
 
+  static const List<String> _typeFilterLabels = [
+    'Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory',
+  ];
+
   final List<Color> _filterColors = [
     Colors.black,
     Colors.grey,
@@ -42,6 +46,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   ];
 
   int? _selectedColorIndex;
+  Set<String> _selectedTypes = {};
 
   Color _nameToColor(String colorName) {
     switch (colorName.toLowerCase()) {
@@ -119,6 +124,32 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       ),
                     ),
                   ),
+                );
+              },
+            ),
+          ),
+
+          // Type filter chips
+          SizedBox(
+            height: 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              itemCount: _typeFilterLabels.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final label = _typeFilterLabels[index];
+                final selected = _selectedTypes.contains(label);
+                return FilterChip(
+                  label: Text(label),
+                  selected: selected,
+                  onSelected: (_) => setState(() {
+                    if (selected) {
+                      _selectedTypes.remove(label);
+                    } else {
+                      _selectedTypes.add(label);
+                    }
+                  }),
                 );
               },
             ),
