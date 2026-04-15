@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/widgets/bottom_nav.dart';
 import '../home/ootd_menu.dart';
@@ -166,6 +167,25 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     controller.dispose();
   }
 
+  Future<void> _shareOutfit(Map<String, dynamic> data) async {
+    final title = (data['title'] ?? 'My Outfit').toString();
+    final clothingIds = List<String>.from(data['clothingIds'] ?? []);
+
+    final itemDescriptions = clothingIds.map((id) {
+      final item = _wardrobeCache[id];
+      if (item == null) return 'Item';
+      final type = (item['type'] as String?) ?? 'Item';
+      final color = (item['color'] as String?) ?? '';
+      return color.isNotEmpty ? '$color $type' : type;
+    }).toList();
+
+    final shareText = itemDescriptions.isEmpty
+        ? 'Check out my outfit: $title'
+        : 'Check out my outfit: $title\n\nItems:\n${itemDescriptions.map((d) => '• $d').join('\n')}';
+
+    await Share.share(shareText, subject: title);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,8 +206,10 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
         builder: (context, snapshot) {
           final docs = snapshot.data?.docs ?? [];
           final latest = docs.isNotEmpty ? docs.first : null;
-          final savedLooks =
-              docs.where((d) => d.data()['status'] == 'saved').toList();
+          // All suggestions except the latest (which is shown as "Today's Outfit")
+          final historyDocs = docs.length > 1
+              ? docs.sublist(1)
+              : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -203,6 +225,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   data: latest.data(),
                   wardrobeCache: _wardrobeCache,
                   onSave: () => _showSaveDialog(latest),
+                  onShare: () => _shareOutfit(latest.data()),
                 )
               else
                 Container(
@@ -280,23 +303,26 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
               const SizedBox(height: 28),
 
               const Text(
-                'Saved Looks',
+                'Past Suggestions',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
 
-              if (savedLooks.isEmpty)
-                Text(
-                  'No saved looks yet.',
-                  style: TextStyle(color: Colors.grey.shade500),
+              if (historyDocs.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'No past suggestions yet. Generate your first outfit above!',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
                 )
               else
-                ...savedLooks.map((doc) {
+                ...historyDocs.map((doc) {
                   final data = doc.data();
-                  final title =
-                      (data['title'] ?? 'Saved Outfit').toString();
+                  final title = (data['title'] ?? 'Outfit').toString();
                   final clothingIds =
                       List<String>.from(data['clothingIds'] ?? []);
+                  final isSaved = (data['status'] as String?) == 'saved';
                   final imageUrls = clothingIds
                       .map((id) =>
                           (_wardrobeCache[id]?['imageUrl'] as String?) ?? '')
@@ -320,12 +346,13 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                             child: Row(
                               children: imageUrls.map((url) {
                                 return Expanded(
-                                  child: Image.network(url,
-                                      fit: BoxFit.cover,
-                                      height: 80,
-                                      errorBuilder: (context, error, stack) => Container(
-                                            color: Colors.grey.shade300,
-                                          )),
+                                  child: Image.network(
+                                    url,
+                                    fit: BoxFit.cover,
+                                    height: 80,
+                                    errorBuilder: (context, error, stack) =>
+                                        Container(color: Colors.grey.shade300),
+                                  ),
                                 );
                               }).toList(),
                             ),
@@ -342,15 +369,30 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                                     Text(title,
                                         style: const TextStyle(
                                             fontWeight: FontWeight.w600)),
-                                    Text('${clothingIds.length} pieces',
-                                        style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12)),
+                                    Text(
+                                      '${clothingIds.length} piece${clothingIds.length == 1 ? '' : 's'}${isSaved ? ' · Saved' : ''}',
+                                      style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 12),
+                                    ),
                                   ],
                                 ),
                               ),
-                              Icon(Icons.bookmark,
-                                  color: Colors.black, size: 20),
+                              IconButton(
+                                icon: const Icon(Icons.share_outlined, size: 20),
+                                onPressed: () => _shareOutfit(data),
+                                tooltip: 'Share outfit',
+                              ),
+                              if (isSaved)
+                                const Icon(Icons.bookmark,
+                                    color: Colors.black, size: 20)
+                              else
+                                IconButton(
+                                  icon:
+                                      const Icon(Icons.bookmark_border, size: 20),
+                                  onPressed: () => _showSaveDialog(doc),
+                                  tooltip: 'Save outfit',
+                                ),
                             ],
                           ),
                         ),
@@ -371,11 +413,13 @@ class _OutfitCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final Map<String, Map<String, dynamic>> wardrobeCache;
   final VoidCallback onSave;
+  final VoidCallback onShare;
 
   const _OutfitCard({
     required this.data,
     required this.wardrobeCache,
     required this.onSave,
+    required this.onShare,
   });
 
   @override
@@ -467,20 +511,29 @@ class _OutfitCard extends StatelessWidget {
                           color: Colors.grey.shade600, fontSize: 13)),
                 ],
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: isSaved ? null : onSave,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                          color: isSaved ? Colors.grey : Colors.black),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: isSaved ? null : onSave,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                              color: isSaved ? Colors.grey : Colors.black),
+                        ),
+                        child: Text(
+                          isSaved ? 'Saved' : 'Save Look',
+                          style: TextStyle(
+                              color: isSaved ? Colors.grey : Colors.black),
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      isSaved ? 'Saved' : 'Save Look',
-                      style: TextStyle(
-                          color: isSaved ? Colors.grey : Colors.black),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: onShare,
+                      icon: const Icon(Icons.share_outlined),
+                      tooltip: 'Share outfit',
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
