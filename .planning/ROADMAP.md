@@ -7,7 +7,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Wardrobe Type Filter** - User can tap clothing type chips to filter the wardrobe to matching items
+- [x] **Phase 1: Wardrobe Type Filter** - User can tap clothing type chips to filter the wardrobe to matching items (completed 2026-04-15)
 - [ ] **Phase 2: Style Lab Polish** - User can save, view, share AI suggestions and sees clear error/empty states
 
 ## Phase Details
@@ -24,7 +24,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Add type FilterChip row + filter logic to WardrobeScreen
+- [x] 01-01-PLAN.md — Add type FilterChip row + filter logic to WardrobeScreen
 
 ### Phase 2: Style Lab Polish
 **Goal**: Users get a reliable, complete Style Lab experience — save suggestions, review past ones, share outfits, and receive clear feedback on failures
@@ -43,5 +43,5 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Wardrobe Type Filter | 0/1 | Not started | - |
+| 1. Wardrobe Type Filter | 1/1 | Complete   | 2026-04-15 |
 | 2. Style Lab Polish | 0/? | Not started | - |
