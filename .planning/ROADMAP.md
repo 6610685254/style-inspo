@@ -40,7 +40,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01-PLAN.md — Save dialog, error message mapping, empty-state widget (SLAB-01, SLAB-02, SLAB-03)
+- [x] 02-01-PLAN.md — Save dialog, error message mapping, empty-state widget (SLAB-01, SLAB-02, SLAB-03)
 - [ ] 02-02-PLAN.md — share_plus integration + full suggestion history section (SLAB-04, SLAB-05)
 
 ## Progress Table
@@ -48,4 +48,4 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Wardrobe Type Filter | 1/1 | Complete    | 2026-04-15 |
-| 2. Style Lab Polish | 0/2 | Not started | - |
+| 2. Style Lab Polish | 1/2 | In Progress|  |
