@@ -167,13 +167,22 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 final allDocs = snapshot.data?.docs ?? [];
 
                 // Apply color filter
-                final docs = _selectedColorIndex == null
+                final colorFiltered = _selectedColorIndex == null
                     ? allDocs
                     : allDocs.where((doc) {
                         final color =
                             (doc.data()['color'] ?? '').toString().toLowerCase();
                         return color
                             .contains(_filterColorNames[_selectedColorIndex!]);
+                      }).toList();
+
+                // Apply type filter
+                final docs = _selectedTypes.isEmpty
+                    ? colorFiltered
+                    : colorFiltered.where((doc) {
+                        final type = _capitalize(
+                            (doc.data()['type'] ?? '').toString());
+                        return _selectedTypes.contains(type);
                       }).toList();
 
 
@@ -186,9 +195,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                             size: 64, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
-                          _selectedColorIndex == null
+                          (_selectedColorIndex == null && _selectedTypes.isEmpty)
                               ? 'No clothes yet.\nTap + to add your first item.'
-                              : 'No items with that color.',
+                              : 'No items match the selected filters.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
