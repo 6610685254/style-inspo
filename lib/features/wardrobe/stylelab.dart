@@ -17,6 +17,7 @@ class StyleLabScreen extends StatefulWidget {
 class _StyleLabScreenState extends State<StyleLabScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
   bool _isGenerating = false;
+  bool _wardrobeCacheLoaded = false;
 
   // Cache of wardrobe items: id -> data
   Map<String, Map<String, dynamic>> _wardrobeCache = {};
@@ -37,9 +38,29 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
           _wardrobeCache = {
             for (final doc in items) doc.id: doc.data(),
           };
+          _wardrobeCacheLoaded = true;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _wardrobeCacheLoaded = true);
+    }
+  }
+
+  String _friendlyErrorMessage(FirebaseFunctionsException e) {
+    switch (e.code) {
+      case 'unauthenticated':
+        return 'You must be signed in to generate an outfit. Please log in and try again.';
+      case 'failed-precondition':
+        return 'Your wardrobe needs at least a few items before the AI can suggest an outfit.';
+      case 'internal':
+        return 'The outfit generator encountered an error. Please try again in a moment.';
+      case 'unavailable':
+        return 'Cannot reach the outfit generator right now. Check your internet connection.';
+      case 'not-found':
+        return 'Outfit generation service is unavailable. Please try again later.';
+      default:
+        return 'Could not generate outfit (${e.code}). Please try again.';
+    }
   }
 
   Future<void> _generateSuggestion() async {
@@ -90,9 +111,8 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       );
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
-      final msg = e.message ?? 'Failed to generate outfit.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
+        SnackBar(content: Text(_friendlyErrorMessage(e))),
       );
     } catch (e) {
       if (!mounted) return;
@@ -104,15 +124,46 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     }
   }
 
-  Future<void> _saveOutfit(
+  Future<void> _showSaveDialog(
     QueryDocumentSnapshot<Map<String, dynamic>> suggestion,
   ) async {
     final data = suggestion.data();
+    final defaultTitle = (data['title'] ?? 'Saved Outfit').toString();
+    final controller = TextEditingController(text: defaultTitle);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save Outfit'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Outfit name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
     await _repository.saveSuggestedOutfit(
       suggestionId: suggestion.id,
-      title: (data['title'] ?? 'Saved Outfit').toString(),
+      title: controller.text.trim().isEmpty ? defaultTitle : controller.text.trim(),
       clothingIds: List<String>.from(data['clothingIds'] ?? []),
     );
+    controller.dispose();
   }
 
   @override
@@ -151,7 +202,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                 _OutfitCard(
                   data: latest.data(),
                   wardrobeCache: _wardrobeCache,
-                  onSave: () => _saveOutfit(latest),
+                  onSave: () => _showSaveDialog(latest),
                 )
               else
                 Container(
@@ -170,30 +221,61 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
 
               const SizedBox(height: 16),
 
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: _isGenerating ? null : _generateSuggestion,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+              if (_wardrobeCacheLoaded && _wardrobeCache.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  icon: _isGenerating
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.auto_awesome, size: 18),
-                  label: Text(
-                      _isGenerating ? 'Thinking...' : 'Suggest New Outfit'),
+                  child: Column(
+                    children: [
+                      Icon(Icons.checkroom_outlined, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Your wardrobe is empty',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Add some clothes to your wardrobe first, then come back to generate an outfit suggestion.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pushReplacementNamed('/wardrobe'),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Go to Wardrobe'),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isGenerating ? null : _generateSuggestion,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: _isGenerating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(
+                        _isGenerating ? 'Thinking...' : 'Suggest New Outfit'),
+                  ),
                 ),
-              ),
 
               const SizedBox(height: 28),
 
@@ -241,7 +323,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                                   child: Image.network(url,
                                       fit: BoxFit.cover,
                                       height: 80,
-                                      errorBuilder: (_, __, ___) => Container(
+                                      errorBuilder: (context, error, stack) => Container(
                                             color: Colors.grey.shade300,
                                           )),
                                 );
@@ -330,7 +412,7 @@ class _OutfitCard extends StatelessWidget {
                       url,
                       fit: BoxFit.cover,
                       height: 130,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (context, error, stack) => Container(
                         color: Colors.grey.shade300,
                         child: const Icon(Icons.checkroom, color: Colors.grey),
                       ),
