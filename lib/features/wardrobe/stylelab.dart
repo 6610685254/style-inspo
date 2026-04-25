@@ -324,6 +324,8 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   wardrobeCache: _wardrobeCache,
                   onSave: () => _showSaveDialog(latest),
                   onShare: () => _shareOutfit(latest.data()),
+                  onDelete: () => _deleteSuggestion(latest.id),
+                  
                 )
               else
                 Container(
@@ -542,12 +544,14 @@ class _OutfitCard extends StatelessWidget {
   final Map<String, Map<String, dynamic>> wardrobeCache;
   final VoidCallback onSave;
   final VoidCallback onShare;
+  final VoidCallback onDelete;
 
   const _OutfitCard({
     required this.data,
     required this.wardrobeCache,
     required this.onSave,
     required this.onShare,
+    required this.onDelete,
   });
 
   @override
@@ -660,6 +664,11 @@ class _OutfitCard extends StatelessWidget {
                       onPressed: onShare,
                       icon: const Icon(Icons.share_outlined),
                       tooltip: 'Share outfit',
+                    ),
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Delete suggestion',
                     ),
                   ],
                 ),
