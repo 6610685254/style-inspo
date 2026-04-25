@@ -16,9 +16,11 @@ class StyleLabScreen extends StatefulWidget {
 }
 
 class _StyleLabScreenState extends State<StyleLabScreen> {
+  
   final WardrobeRepository _repository = WardrobeRepository();
   bool _isGenerating = false;
   bool _wardrobeCacheLoaded = false;
+  String _selectedSeason = 'auto';
 
   // Cache of wardrobe items: id -> data
   Map<String, Map<String, dynamic>> _wardrobeCache = {};
@@ -29,6 +31,15 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   void initState() {
     super.initState();
     _loadWardrobeCache();
+  }
+
+  String _getAutoSeason() {
+    final month = DateTime.now().month;
+
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'autumn';
+    return 'winter';
   }
 
   Future<void> _loadWardrobeCache() async {
@@ -73,27 +84,91 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     }
 
     setState(() => _isGenerating = true);
-    try {
-      final callable = FirebaseFunctions.instance.httpsCallable(
-        'generateOutfitSuggestion',
-      );
-      final response = await callable.call();
-      final result = response.data as Map<String, dynamic>;
 
-      final title = (result['title'] as String?) ?? 'AI Styled Look';
-      final clothingIds = List<String>.from(result['clothingIds'] ?? []);
-      final reasoning = (result['reasoning'] as String?) ?? '';
+    try {
+      final season = _selectedSeason == 'auto'
+          ? _getAutoSeason()
+          : _selectedSeason;
+
+      final allItems = _wardrobeCache.entries.toList();
+
+      // 1) First try clothes matching selected season OR all-season
+      var usableItems = allItems.where((entry) {
+        final data = entry.value;
+        final itemSeason = (data['season'] ?? 'all').toString().toLowerCase();
+
+        if (season == 'all') return true;
+
+        return itemSeason == season || itemSeason == 'all';
+      }).toList();
+
+      // 2) If not enough clothes, allow every season as fallback
+      bool usedFallback = false;
+      if (usableItems.length < 2) {
+        usableItems = allItems;
+        usedFallback = true;
+      }
+
+      String? topId;
+      String? bottomId;
+      String? outerId;
+
+      for (final entry in usableItems) {
+        final data = entry.value;
+        final type = (data['type'] ?? '').toString().toLowerCase();
+
+        if (topId == null &&
+            (type.contains('top') ||
+                type.contains('shirt') ||
+                type.contains('hoodie'))) {
+          topId = entry.key;
+        }
+
+        if (bottomId == null &&
+            (type.contains('bottom') ||
+                type.contains('pant') ||
+                type.contains('skirt') ||
+                type.contains('short'))) {
+          bottomId = entry.key;
+        }
+
+        if (outerId == null &&
+            (type.contains('outerwear') ||
+                type.contains('jacket') ||
+                type.contains('coat'))) {
+          outerId = entry.key;
+        }
+      }
+
+      final clothingIds = <String>[];
+
+      if (topId != null) clothingIds.add(topId);
+      if (bottomId != null) clothingIds.add(bottomId);
+      if (outerId != null && (season == 'winter' || season == 'autumn')) {
+        clothingIds.add(outerId);
+      }
+
+      // 3) If category logic failed, just use first available items
+      if (clothingIds.isEmpty) {
+        clothingIds.addAll(usableItems.take(3).map((e) => e.key));
+      }
+
+      final title = usedFallback
+          ? 'Outfit for $season (mixed seasons)'
+          : 'Outfit for $season';
+
+      final reasoning = usedFallback
+          ? 'Not enough $season clothes found, so other seasons were used as backup.'
+          : 'This outfit prioritizes clothes marked for $season or all-season.';
 
       await _repository.createSuggestion(
         title: title,
         clothingIds: clothingIds,
-        generatedBy: 'genkit:gemini-1.5-flash',
+        generatedBy: 'local-season-generator',
       );
 
-      // Also save reasoning to the suggestion doc (createSuggestion doesn't support it)
-      // We'll update the most recent doc for now
       final uid = _uid;
-      if (uid != null && reasoning.isNotEmpty) {
+      if (uid != null) {
         final snap = await FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
@@ -101,24 +176,24 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
             .orderBy('createdAt', descending: true)
             .limit(1)
             .get();
+
         if (snap.docs.isNotEmpty) {
-          await snap.docs.first.reference.update({'reasoning': reasoning});
+          await snap.docs.first.reference.update({
+            'reasoning': reasoning,
+            'season': season,
+            'usedFallback': usedFallback,
+          });
         }
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('New outfit suggested!')),
-      );
-    } on FirebaseFunctionsException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyErrorMessage(e))),
+        SnackBar(content: Text('Generated outfit for $season')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong. Try again.')),
+        SnackBar(content: Text('Something went wrong: $e')),
       );
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -166,6 +241,29 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     );
     controller.dispose();
   }
+  Future<void> _deleteSuggestion(String suggestionId) async {
+  final uid = _uid;
+  if (uid == null) return;
+
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('suggestions')
+        .doc(suggestionId)
+        .delete();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Deleted')),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Delete failed: $e')),
+    );
+  }
+}
 
   Future<void> _shareOutfit(Map<String, dynamic> data) async {
     final title = (data['title'] ?? 'My Outfit').toString();
@@ -274,7 +372,30 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                     ],
                   ),
                 )
-              else
+              else ...[
+                DropdownButtonFormField<String>(
+                  value: _selectedSeason,
+                  decoration: const InputDecoration(
+                    labelText: 'Generate for season',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'auto', child: Text('Auto Today')),
+                    DropdownMenuItem(value: 'all', child: Text('All Season')),
+                    DropdownMenuItem(value: 'spring', child: Text('Spring')),
+                    DropdownMenuItem(value: 'summer', child: Text('Summer')),
+                    DropdownMenuItem(value: 'autumn', child: Text('Autumn')),
+                    DropdownMenuItem(value: 'winter', child: Text('Winter')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSeason = value!;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -292,13 +413,15 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.auto_awesome, size: 18),
-                    label: Text(
-                        _isGenerating ? 'Thinking...' : 'Suggest New Outfit'),
+                    label: Text(_isGenerating ? 'Thinking...' : 'Suggest New Outfit'),
                   ),
                 ),
+              ],
 
               const SizedBox(height: 28),
 
@@ -382,6 +505,11 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                                 icon: const Icon(Icons.share_outlined, size: 20),
                                 onPressed: () => _shareOutfit(data),
                                 tooltip: 'Share outfit',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 20),
+                                onPressed: () => _deleteSuggestion(doc.id),
+                                tooltip: 'Delete suggestion',
                               ),
                               if (isSaved)
                                 const Icon(Icons.bookmark,
