@@ -289,8 +289,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               onLongPress: () => _confirmDelete(context, doc.id),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline,
+                                  ),
                                 ),
                                 clipBehavior: Clip.antiAlias,
                                 child: Stack(
@@ -301,11 +304,29 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                         imageUrl,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.checkroom,
-                                                size: 32),
+                                            const Icon(Icons.checkroom, size: 32),
                                       )
                                     else
                                       const Icon(Icons.checkroom, size: 32),
+                                    Positioned(
+                                      top: 6,
+                                      right: 6,
+                                      child: GestureDetector(
+                                        onTap: () => _showEditSheet(context, doc),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.45),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.edit_outlined,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                     if (color.isNotEmpty)
                                       Positioned(
                                         bottom: 6,
@@ -317,7 +338,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                             color: _nameToColor(color),
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                                color: Colors.white, width: 1),
+                                              color: Colors.white,
+                                              width: 1,
+                                            ),
                                           ),
                                         ),
                                       ),
