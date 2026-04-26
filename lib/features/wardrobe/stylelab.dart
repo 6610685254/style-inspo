@@ -20,7 +20,6 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
   bool _isGenerating = false;
   bool _wardrobeCacheLoaded = false;
-  String _selectedSeason = 'auto';
 
   // Cache of wardrobe items: id -> data
   Map<String, Map<String, dynamic>> _wardrobeCache = {};
@@ -31,15 +30,6 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   void initState() {
     super.initState();
     _loadWardrobeCache();
-  }
-
-  String _getAutoSeason() {
-    final month = DateTime.now().month;
-
-    if (month >= 3 && month <= 5) return 'spring';
-    if (month >= 6 && month <= 8) return 'summer';
-    if (month >= 9 && month <= 11) return 'autumn';
-    return 'winter';
   }
 
   Future<void> _loadWardrobeCache() async {
@@ -240,7 +230,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     setState(() => _isGenerating = true);
 
     try {
-      final season = _selectedSeason == 'auto' ? _getAutoSeason() : _selectedSeason;
+      const season = 'all';
       final allItems = _wardrobeCache.entries.toList();
       var usableItems = allItems.where((entry) {
         final itemSeason = (entry.value['season'] ?? 'all').toString().toLowerCase();
@@ -273,7 +263,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
           final isDuplicateRecent = recentSignatures.contains(aiSignature);
           if (usesOnlyOwned && !isDuplicateRecent) {
             await aiDoc.reference.update({
-              'title': 'Outfit for $season',
+              'title': 'Outfit suggestion',
               'source': 'balanced',
               'status': 'suggested',
               'outfitSignature': aiSignature,
@@ -281,7 +271,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
             });
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Suggested outfit for $season')),
+              const SnackBar(content: Text('Suggested outfit')),
             );
             return;
           }
@@ -406,7 +396,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
         if (topId != null) roleSelections['top'] = topId;
         if (bottomId != null) roleSelections['bottom'] = bottomId;
         if (shoesId != null) roleSelections['shoes'] = shoesId;
-        if (outerId != null && (season == 'winter' || season == 'autumn')) {
+        if (outerId != null) {
           roleSelections['outerwear'] = outerId;
         }
       }
@@ -423,7 +413,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       final reusedRecent = dedupPick.reusedRecent;
       final outfitSignature = _buildOutfitSignature(clothingIds);
 
-      final title = usedFallback ? 'Outfit for $season (mixed seasons)' : 'Outfit for $season';
+      const title = 'Outfit suggestion';
       await _repository.createSuggestion(
         title: title,
         clothingIds: clothingIds,
@@ -438,7 +428,8 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Suggested outfit for $season')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Suggested outfit')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -624,29 +615,6 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   ),
                 )
               else ...[
-                DropdownButtonFormField<String>(
-                  value: _selectedSeason,
-                  decoration: const InputDecoration(
-                    labelText: 'Generate for season',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'auto', child: Text('Auto Today')),
-                    DropdownMenuItem(value: 'all', child: Text('All Season')),
-                    DropdownMenuItem(value: 'spring', child: Text('Spring')),
-                    DropdownMenuItem(value: 'summer', child: Text('Summer')),
-                    DropdownMenuItem(value: 'autumn', child: Text('Autumn')),
-                    DropdownMenuItem(value: 'winter', child: Text('Winter')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedSeason = value!;
-                    });
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
                 SizedBox(
                   width: double.infinity,
                   height: 48,
