@@ -295,7 +295,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       final outfitSignature = _buildOutfitSignature(clothingIds);
 
       await _repository.createSuggestion(
-        title: 'Random outfit suggestion',
+        title: 'Outfit suggestion',
         clothingIds: clothingIds.toSet().toList(),
         outfitSignature: outfitSignature,
         generatedBy: 'random-filter-generator',
