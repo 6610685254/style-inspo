@@ -14,6 +14,22 @@ class WardrobeScreen extends StatefulWidget {
 
 class _WardrobeScreenState extends State<WardrobeScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
+  static const List<String> _styleOptions = [
+    'casual',
+    'minimal',
+    'street',
+    'formal',
+    'sporty',
+    'cute',
+    'vintage',
+  ];
+  static const List<String> _weatherOptions = [
+    'hot',
+    'rainy',
+    'cold',
+    'indoor',
+    'outdoor',
+  ];
 
   static const List<String> _typeFilterLabels = [
     'Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory',
@@ -300,6 +316,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  Set<String> _asTagSet(dynamic value) {
+    if (value is List) {
+      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toSet();
+    }
+    return <String>{};
+  }
 
   Future<void> _showEditSheet(
     BuildContext context,
@@ -311,6 +333,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     String selectedType = _capitalize(data['type']?.toString() ?? 'Top');
     String selectedSeason =
         _capitalize(data['season']?.toString() ?? 'All');
+    final selectedStyleTags = _asTagSet(data['styleTags']);
+    final selectedWeatherTags = _asTagSet(data['weatherTags']);
 
     final clothingTypes = ['Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory'];
     final seasons = ['All', 'Spring', 'Summer', 'Autumn', 'Winter'];
@@ -411,6 +435,34 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     );
                   }).toList(),
                 ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 10),
+                _TagEditor(
+                  title: 'Style details',
+                  options: _styleOptions,
+                  selectedValues: selectedStyleTags,
+                  onToggle: (value) {
+                    setSheetState(() {
+                      selectedStyleTags.contains(value)
+                          ? selectedStyleTags.remove(value)
+                          : selectedStyleTags.add(value);
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                _TagEditor(
+                  title: 'Weather',
+                  options: _weatherOptions,
+                  selectedValues: selectedWeatherTags,
+                  onToggle: (value) {
+                    setSheetState(() {
+                      selectedWeatherTags.contains(value)
+                          ? selectedWeatherTags.remove(value)
+                          : selectedWeatherTags.add(value);
+                    });
+                  },
+                ),
                 const SizedBox(height: 24),
 
                 // Save button
@@ -431,6 +483,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         type: selectedType.toLowerCase(),
                         color: colorController.text.trim().toLowerCase(),
                         season: selectedSeason.toLowerCase(),
+                        styleTags: selectedStyleTags.toList(),
+                        weatherTags: selectedWeatherTags.toList(),
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                     },
@@ -466,5 +520,47 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     if (confirmed == true) {
       await _repository.deleteClothingItem(docId);
     }
+  }
+}
+
+class _TagEditor extends StatelessWidget {
+  const _TagEditor({
+    required this.title,
+    required this.options,
+    required this.selectedValues,
+    required this.onToggle,
+  });
+
+  final String title;
+  final List<String> options;
+  final Set<String> selectedValues;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final selected = selectedValues.contains(option);
+            return FilterChip(
+              label: Text(option),
+              selected: selected,
+              selectedColor: onSurface,
+              labelStyle: TextStyle(
+                color: selected ? Theme.of(context).colorScheme.surface : onSurface,
+              ),
+              onSelected: (_) => onToggle(option),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }

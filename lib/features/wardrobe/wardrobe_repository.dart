@@ -43,6 +43,9 @@ class WardrobeRepository {
     required String color,
     required String season,
     List<String> tags = const [],
+    List<String> styleTags = const [],
+    List<String> occasionTags = const [],
+    List<String> weatherTags = const [],
     Map<String, dynamic> visionAttributes = const {},
   }) async {
     final uid = userId;
@@ -54,6 +57,9 @@ class WardrobeRepository {
       'color': color,
       'season': season,
       'tags': tags,
+      'styleTags': styleTags,
+      'occasionTags': occasionTags,
+      'weatherTags': weatherTags,
       'visionAttributes': visionAttributes,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -67,6 +73,9 @@ class WardrobeRepository {
     String? color,
     String? season,
     List<String>? tags,
+    List<String>? styleTags,
+    List<String>? occasionTags,
+    List<String>? weatherTags,
     Map<String, dynamic>? visionAttributes,
   }) async {
     final uid = userId;
@@ -77,6 +86,9 @@ class WardrobeRepository {
       if (color != null) 'color': color,
       if (season != null) 'season': season,
       if (tags != null) 'tags': tags,
+      if (styleTags != null) 'styleTags': styleTags,
+      if (occasionTags != null) 'occasionTags': occasionTags,
+      if (weatherTags != null) 'weatherTags': weatherTags,
       if (visionAttributes != null) 'visionAttributes': visionAttributes,
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -103,6 +115,9 @@ class WardrobeRepository {
     required List<String> clothingIds,
     String generatedBy = 'genkit:v1',
     double confidence = 0.7,
+    String source = 'wardrobe',
+    String reasoning = '',
+    String? outfitSignature,
   }) async {
     final uid = userId;
     if (uid == null) return null;
@@ -110,7 +125,12 @@ class WardrobeRepository {
     final ref = await _suggestionsCollection(uid).add({
       'title': title,
       'clothingIds': clothingIds,
+      'outfitSignature':
+          outfitSignature ??
+          ([...clothingIds]..sort()).join('|'),
       'generatedBy': generatedBy,
+      'source': source,
+      'reasoning': reasoning,
       'confidence': confidence,
       'status': 'suggested',
       'createdAt': FieldValue.serverTimestamp(),
@@ -195,6 +215,9 @@ class WardrobeRepository {
     required String type,
     required String color,
     String season = 'all',
+    List<String> styleTags = const [],
+    List<String> occasionTags = const [],
+    List<String> weatherTags = const [],
   }) async {
     final uid = userId;
     if (uid == null) throw Exception("User not logged in");
@@ -205,6 +228,9 @@ class WardrobeRepository {
       'color': color,
       'season': season,
       'tags': [],
+      'styleTags': styleTags,
+      'occasionTags': occasionTags,
+      'weatherTags': weatherTags,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

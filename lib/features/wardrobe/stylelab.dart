@@ -75,6 +75,160 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     }
   }
 
+  List<String> _asStringList(dynamic value) {
+    if (value is List) {
+      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    }
+    return <String>[];
+  }
+
+  String _inferRole(String type) {
+    final t = type.toLowerCase();
+    if (t.contains('top') || t.contains('shirt') || t.contains('hoodie') || t.contains('tee')) {
+      return 'top';
+    }
+    if (t.contains('bottom') || t.contains('pant') || t.contains('skirt') || t.contains('short') || t.contains('jean')) {
+      return 'bottom';
+    }
+    if (t.contains('shoe') || t.contains('sneaker') || t.contains('boot') || t.contains('heel')) {
+      return 'shoes';
+    }
+    if (t.contains('outerwear') || t.contains('jacket') || t.contains('coat') || t.contains('blazer')) {
+      return 'outerwear';
+    }
+    return 'other';
+  }
+
+  int _matchCount(List<String> a, List<String> b) {
+    if (a.isEmpty || b.isEmpty) return 0;
+    return a.toSet().intersection(b.toSet()).length;
+  }
+
+  String _buildOutfitSignature(List<String> clothingIds) {
+    final normalized = clothingIds.toSet().toList()..sort();
+    return normalized.join('|');
+  }
+
+  Future<Set<String>> _loadRecentOutfitSignatures(String uid) async {
+    final now = DateTime.now();
+    final cutoff = now.subtract(const Duration(days: 7));
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('suggestions')
+        .orderBy('createdAt', descending: true)
+        .limit(100)
+        .get();
+
+    final signatures = <String>{};
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final ts = data['createdAt'];
+      if (ts is Timestamp && ts.toDate().isBefore(cutoff)) continue;
+      final signature = (data['outfitSignature'] ?? '').toString();
+      if (signature.isNotEmpty) {
+        signatures.add(signature);
+        continue;
+      }
+      final ids = _asStringList(data['clothingIds']);
+      if (ids.isNotEmpty) {
+        signatures.add(_buildOutfitSignature(ids));
+      }
+    }
+    return signatures;
+  }
+
+  ({List<String> ids, bool reusedRecent}) _pickOutfitWithDedup({
+    required List<MapEntry<String, Map<String, dynamic>>> usableItems,
+    required Set<String> recentSignatures,
+    required String season,
+    Map<String, String> preferredByRole = const {},
+  }) {
+    final byRole = <String, List<String>>{
+      'top': [],
+      'bottom': [],
+      'shoes': [],
+      'outerwear': [],
+      'other': [],
+    };
+    for (final item in usableItems) {
+      final role = _inferRole((item.value['type'] ?? '').toString());
+      byRole.putIfAbsent(role, () => []).add(item.key);
+    }
+
+    void prioritize(String role) {
+      final preferred = preferredByRole[role];
+      if (preferred == null) return;
+      final list = byRole[role] ?? [];
+      if (list.remove(preferred)) {
+        list.insert(0, preferred);
+      }
+      byRole[role] = list;
+    }
+
+    prioritize('top');
+    prioritize('bottom');
+    prioritize('shoes');
+    prioritize('outerwear');
+
+    final tops = byRole['top']!;
+    final bottoms = byRole['bottom']!;
+    final shoes = byRole['shoes']!;
+    final outer = byRole['outerwear']!;
+    final others = byRole['other']!;
+
+    final candidateIds = <List<String>>[];
+    if (tops.isNotEmpty && bottoms.isNotEmpty) {
+      final topChoices = tops.take(3).toList();
+      final bottomChoices = bottoms.take(3).toList();
+      final shoesChoices = shoes.take(2).toList();
+      final outerChoices = outer.take(2).toList();
+      for (final t in topChoices) {
+        for (final b in bottomChoices) {
+          final base = <String>[t, b];
+          candidateIds.add(base);
+          for (final s in shoesChoices) {
+            candidateIds.add([...base, s]);
+          }
+          if (season == 'winter' || season == 'autumn') {
+            for (final o in outerChoices) {
+              candidateIds.add([...base, o]);
+              for (final s in shoesChoices) {
+                candidateIds.add([...base, o, s]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (candidateIds.isEmpty) {
+      final fallbackPool = [
+        ...tops,
+        ...bottoms,
+        ...shoes,
+        ...outer,
+        ...others,
+      ];
+      for (var i = 0; i < fallbackPool.length; i++) {
+        candidateIds.add(fallbackPool.skip(i).take(3).toList());
+      }
+    }
+
+    candidateIds.removeWhere((ids) => ids.isEmpty);
+    for (final ids in candidateIds) {
+      final signature = _buildOutfitSignature(ids);
+      if (!recentSignatures.contains(signature)) {
+        return (ids: ids.toSet().toList(), reusedRecent: false);
+      }
+    }
+
+    final fallback = candidateIds.isNotEmpty
+        ? candidateIds.first.toSet().toList()
+        : usableItems.take(3).map((e) => e.key).toList();
+    return (ids: fallback, reusedRecent: true);
+  }
+
   Future<void> _generateSuggestion() async {
     if (_wardrobeCache.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,110 +240,205 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     setState(() => _isGenerating = true);
 
     try {
-      final season = _selectedSeason == 'auto'
-          ? _getAutoSeason()
-          : _selectedSeason;
-
+      final season = _selectedSeason == 'auto' ? _getAutoSeason() : _selectedSeason;
       final allItems = _wardrobeCache.entries.toList();
-
-      // 1) First try clothes matching selected season OR all-season
       var usableItems = allItems.where((entry) {
-        final data = entry.value;
-        final itemSeason = (data['season'] ?? 'all').toString().toLowerCase();
-
+        final itemSeason = (entry.value['season'] ?? 'all').toString().toLowerCase();
         if (season == 'all') return true;
-
         return itemSeason == season || itemSeason == 'all';
       }).toList();
-
-      // 2) If not enough clothes, allow every season as fallback
       bool usedFallback = false;
       if (usableItems.length < 2) {
         usableItems = allItems;
         usedFallback = true;
       }
 
-      String? topId;
-      String? bottomId;
-      String? outerId;
-
-      for (final entry in usableItems) {
-        final data = entry.value;
-        final type = (data['type'] ?? '').toString().toLowerCase();
-
-        if (topId == null &&
-            (type.contains('top') ||
-                type.contains('shirt') ||
-                type.contains('hoodie'))) {
-          topId = entry.key;
-        }
-
-        if (bottomId == null &&
-            (type.contains('bottom') ||
-                type.contains('pant') ||
-                type.contains('skirt') ||
-                type.contains('short'))) {
-          bottomId = entry.key;
-        }
-
-        if (outerId == null &&
-            (type.contains('outerwear') ||
-                type.contains('jacket') ||
-                type.contains('coat'))) {
-          outerId = entry.key;
+      final uid = _uid;
+      final ownedIds = usableItems.map((e) => e.key).toSet();
+      final recentSignatures = uid == null
+          ? <String>{}
+          : await _loadRecentOutfitSignatures(uid);
+      if (uid != null) {
+        final aiSuggestionId = await _repository.generateAIOutfit();
+        if (aiSuggestionId != null) {
+          final aiDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('suggestions')
+              .doc(aiSuggestionId)
+              .get();
+          final aiIds = _asStringList(aiDoc.data()?['clothingIds']);
+          final usesOnlyOwned = aiIds.isNotEmpty && aiIds.every(ownedIds.contains);
+          final aiSignature = _buildOutfitSignature(aiIds);
+          final isDuplicateRecent = recentSignatures.contains(aiSignature);
+          if (usesOnlyOwned && !isDuplicateRecent) {
+            await aiDoc.reference.update({
+              'title': 'Outfit for $season',
+              'source': 'balanced',
+              'status': 'suggested',
+              'outfitSignature': aiSignature,
+              'reasoning': 'Based on your saved style preferences and matched with your wardrobe.',
+            });
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Suggested outfit for $season')),
+            );
+            return;
+          }
+          await aiDoc.reference.delete();
         }
       }
 
-      final clothingIds = <String>[];
+      final roleSelections = <String, String>{};
+      String source = 'balanced';
+      String reasoning = 'Fallback suggestion based on your wardrobe.';
 
-      if (topId != null) clothingIds.add(topId);
-      if (bottomId != null) clothingIds.add(bottomId);
-      if (outerId != null && (season == 'winter' || season == 'autumn')) {
-        clothingIds.add(outerId);
+      if (uid != null) {
+        final likedSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('likedPosts')
+            .get();
+        final likedPostIds = likedSnap.docs.map((d) => d.id).toSet();
+
+        final postsSnap = await FirebaseFirestore.instance.collection('posts').get();
+        final posts = postsSnap.docs
+            .where((d) => (d.data()['outfitMeta'] is List) && (d.data()['outfitMeta'] as List).isNotEmpty)
+            .toList();
+        posts.sort((a, b) {
+          final aLikes = ((a.data()['likeCount'] ?? a.data()['likes'] ?? 0) as num).toInt();
+          final bLikes = ((b.data()['likeCount'] ?? b.data()['likes'] ?? 0) as num).toInt();
+          return bLikes.compareTo(aLikes);
+        });
+
+        int bestPostScore = -1;
+        Map<String, dynamic>? bestPostData;
+
+        for (final post in posts.take(40)) {
+          final postData = post.data();
+          final metaEntries = (postData['outfitMeta'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e.cast<String, dynamic>()))
+              .toList();
+          if (metaEntries.isEmpty) continue;
+
+          final roleBest = <String, Map<String, dynamic>>{};
+          int aggregateScore = 0;
+
+          for (final template in metaEntries) {
+            final templateType = (template['type'] ?? '').toString().toLowerCase();
+            final role = _inferRole(templateType);
+            if (role == 'other') continue;
+            int bestScore = -1;
+            String? bestId;
+            for (final item in usableItems) {
+              final data = item.value;
+              final itemRole = _inferRole((data['type'] ?? '').toString());
+              if (itemRole != role) continue;
+              int score = 0;
+              if (itemRole == role) score += 5;
+              if ((data['color'] ?? '').toString().toLowerCase() ==
+                  (template['color'] ?? '').toString().toLowerCase()) {
+                score += 3;
+              }
+              score += _matchCount(
+                    _asStringList(data['styleTags']),
+                    _asStringList(template['styleTags']),
+                  ) *
+                  3;
+              score += _matchCount(
+                    _asStringList(data['occasionTags']),
+                    _asStringList(template['occasionTags']),
+                  ) *
+                  2;
+              score += _matchCount(
+                    _asStringList(data['weatherTags']),
+                    _asStringList(template['weatherTags']),
+                  ) *
+                  2;
+              if (score > bestScore) {
+                bestScore = score;
+                bestId = item.key;
+              }
+            }
+            if (bestId != null && bestScore >= 5) {
+              roleBest[role] = {'id': bestId, 'score': bestScore};
+              aggregateScore += bestScore;
+            }
+          }
+
+          final likeCount = ((postData['likeCount'] ?? postData['likes'] ?? 0) as num).toInt();
+          aggregateScore += likeCount ~/ 10;
+          if (likedPostIds.contains(post.id)) {
+            aggregateScore += 8;
+          }
+          if (aggregateScore > bestPostScore && roleBest.isNotEmpty) {
+            bestPostScore = aggregateScore;
+            bestPostData = {
+              'post': postData,
+              'roleBest': roleBest,
+            };
+          }
+        }
+
+        if (bestPostData != null) {
+          final roleBest = (bestPostData['roleBest'] as Map<String, dynamic>);
+          roleSelections.addAll(
+            roleBest.map((key, value) => MapEntry(key, (value as Map<String, dynamic>)['id'].toString())),
+          );
+          source = 'balanced';
+          reasoning = 'Inspired by community trends and matched with your wardrobe.';
+        }
       }
 
-      // 3) If category logic failed, just use first available items
+      if (roleSelections.isEmpty) {
+        String? topId;
+        String? bottomId;
+        String? outerId;
+        String? shoesId;
+        for (final entry in usableItems) {
+          final role = _inferRole((entry.value['type'] ?? '').toString());
+          if (topId == null && role == 'top') topId = entry.key;
+          if (bottomId == null && role == 'bottom') bottomId = entry.key;
+          if (outerId == null && role == 'outerwear') outerId = entry.key;
+          if (shoesId == null && role == 'shoes') shoesId = entry.key;
+        }
+        if (topId != null) roleSelections['top'] = topId;
+        if (bottomId != null) roleSelections['bottom'] = bottomId;
+        if (shoesId != null) roleSelections['shoes'] = shoesId;
+        if (outerId != null && (season == 'winter' || season == 'autumn')) {
+          roleSelections['outerwear'] = outerId;
+        }
+      }
+      final dedupPick = _pickOutfitWithDedup(
+        usableItems: usableItems,
+        recentSignatures: recentSignatures,
+        season: season,
+        preferredByRole: roleSelections,
+      );
+      final clothingIds = dedupPick.ids.where(ownedIds.contains).toSet().toList();
       if (clothingIds.isEmpty) {
         clothingIds.addAll(usableItems.take(3).map((e) => e.key));
       }
+      final reusedRecent = dedupPick.reusedRecent;
+      final outfitSignature = _buildOutfitSignature(clothingIds);
 
-      final title = usedFallback
-          ? 'Outfit for $season (mixed seasons)'
-          : 'Outfit for $season';
-
-      final reasoning = usedFallback
-          ? 'Not enough $season clothes found, so other seasons were used as backup.'
-          : 'This outfit prioritizes clothes marked for $season or all-season.';
-
+      final title = usedFallback ? 'Outfit for $season (mixed seasons)' : 'Outfit for $season';
       await _repository.createSuggestion(
         title: title,
         clothingIds: clothingIds,
-        generatedBy: 'local-season-generator',
+        outfitSignature: outfitSignature,
+        generatedBy: 'hybrid-community-recommender',
+        source: source,
+        reasoning: reusedRecent
+            ? 'Limited wardrobe options, so a recent combination may be reused.'
+            : roleSelections.isEmpty
+                ? 'Fallback suggestion based on your wardrobe.'
+                : reasoning,
       );
-
-      final uid = _uid;
-      if (uid != null) {
-        final snap = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('suggestions')
-            .orderBy('createdAt', descending: true)
-            .limit(1)
-            .get();
-
-        if (snap.docs.isNotEmpty) {
-          await snap.docs.first.reference.update({
-            'reasoning': reasoning,
-            'season': season,
-            'usedFallback': usedFallback,
-          });
-        }
-      }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Generated outfit for $season')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Suggested outfit for $season')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -336,7 +585,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    'No outfit yet.\nTap below to generate one.',
+                    'No outfit yet.\nTap below to suggest one.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey.shade500),
                   ),
@@ -361,7 +610,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Add some clothes to your wardrobe first, then come back to generate an outfit suggestion.',
+                        'Add some clothes to your wardrobe first, then come back to suggest an outfit.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                       ),
@@ -420,7 +669,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                             ),
                           )
                         : const Icon(Icons.auto_awesome, size: 18),
-                    label: Text(_isGenerating ? 'Thinking...' : 'Suggest New Outfit'),
+                    label: Text(_isGenerating ? 'Thinking...' : 'Suggest Outfit'),
                   ),
                 ),
               ],

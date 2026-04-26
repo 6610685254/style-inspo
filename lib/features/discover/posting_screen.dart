@@ -86,6 +86,28 @@ class _PostingScreenState extends State<PostingScreen> {
 
       final imageUrl = await _uploadImage(_imageFile!);
       if (imageUrl == null) throw Exception('Image upload failed');
+      final outfitMeta = <Map<String, dynamic>>[];
+      List<String> asList(dynamic value) => value is List
+          ? value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          : <String>[];
+      for (final clothingId in _selectedWardrobe.keys) {
+        final clothingDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('clothes')
+            .doc(clothingId)
+            .get();
+        if (!clothingDoc.exists) continue;
+        final data = clothingDoc.data() ?? {};
+        outfitMeta.add({
+          'clothingId': clothingId,
+          'type': (data['type'] ?? '').toString(),
+          'color': (data['color'] ?? '').toString(),
+          'styleTags': asList(data['styleTags']),
+          'occasionTags': asList(data['occasionTags']),
+          'weatherTags': asList(data['weatherTags']),
+        });
+      }
 
       await FirebaseFirestore.instance.collection('posts').add({
         'uid': uid,
@@ -99,6 +121,8 @@ class _PostingScreenState extends State<PostingScreen> {
         'savedOutfits': _selectedOutfits.values.toList(),
         'savedOutfitIds': _selectedOutfits.keys.toList(),
         'likes': 0,
+        'likeCount': 0,
+        'outfitMeta': outfitMeta,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
