@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+//import 'package:cloud_functions/cloud_functions.dart';
 import 'package:share_plus/share_plus.dart';
-
+import 'dart:math';
 import '../../core/widgets/bottom_nav.dart';
 import '../home/ootd_menu.dart';
 import 'wardrobe_repository.dart';
@@ -20,6 +20,42 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
   bool _isGenerating = false;
   bool _wardrobeCacheLoaded = false;
+  String _pieceFilter = 'any';
+  String _weatherFilter = 'any';
+  String _styleFilter = 'any';
+  final Random _random = Random();
+
+  bool _showAdvanced = false;
+
+  final List<String> _pieceOptions = [
+    'any',
+    'top',
+    'bottom',
+    'shoes',
+    'outerwear',
+    'dress',
+    'accessory',
+  ];
+  
+  final List<String> _weatherOptions = [
+    'any',
+    'hot',
+    'rainy',
+    'cold',
+    'indoor',
+    'outdoor',
+  ];
+
+  final List<String> _styleOptions = [
+    'any',
+    'casual',
+    'minimal',
+    'street',
+    'formal',
+    'sporty',
+    'cute',
+    'vintage',
+  ];
 
   // Cache of wardrobe items: id -> data
   Map<String, Map<String, dynamic>> _wardrobeCache = {};
@@ -47,24 +83,24 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       if (mounted) setState(() => _wardrobeCacheLoaded = true);
     }
   }
-
-  String _friendlyErrorMessage(FirebaseFunctionsException e) {
-    switch (e.code) {
-      case 'unauthenticated':
-        return 'You must be signed in to generate an outfit. Please log in and try again.';
-      case 'failed-precondition':
-        return 'Your wardrobe needs at least a few items before the AI can suggest an outfit.';
-      case 'internal':
-        return 'The outfit generator encountered an error. Please try again in a moment.';
-      case 'unavailable':
-        return 'Cannot reach the outfit generator right now. Check your internet connection.';
-      case 'not-found':
-        return 'Outfit generation service is unavailable. Please try again later.';
-      default:
-        return 'Could not generate outfit (${e.code}). Please try again.';
-    }
-  }
-
+//
+  //String _friendlyErrorMessage(FirebaseFunctionsException e) {
+    //switch (e.code) {
+      //case 'unauthenticated':
+      //  return 'You must be signed in to generate an outfit. Please log in and try again.';
+      //case 'failed-precondition':
+      //  return 'Your wardrobe needs at least a few items before the AI can suggest an outfit.';
+      //case 'internal':
+      //  return 'The outfit generator encountered an error. Please try again in a moment.';
+      //case 'unavailable':
+      //  return 'Cannot reach the outfit generator right now. Check your internet connection.';
+      //case 'not-found':
+      //  return 'Outfit generation service is unavailable. Please try again later.';
+      //default:
+      //  return 'Could not generate outfit (${e.code}). Please try again.';
+   // }
+  //}
+//
   List<String> _asStringList(dynamic value) {
     if (value is List) {
       return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
@@ -128,95 +164,37 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     return signatures;
   }
 
-  ({List<String> ids, bool reusedRecent}) _pickOutfitWithDedup({
-    required List<MapEntry<String, Map<String, dynamic>>> usableItems,
-    required Set<String> recentSignatures,
-    required String season,
-    Map<String, String> preferredByRole = const {},
+  List<MapEntry<String, Map<String, dynamic>>> _filterItems({
+    required String role,
   }) {
-    final byRole = <String, List<String>>{
-      'top': [],
-      'bottom': [],
-      'shoes': [],
-      'outerwear': [],
-      'other': [],
-    };
-    for (final item in usableItems) {
-      final role = _inferRole((item.value['type'] ?? '').toString());
-      byRole.putIfAbsent(role, () => []).add(item.key);
-    }
+    return _wardrobeCache.entries.where((entry) {
+      final data = entry.value;
 
-    void prioritize(String role) {
-      final preferred = preferredByRole[role];
-      if (preferred == null) return;
-      final list = byRole[role] ?? [];
-      if (list.remove(preferred)) {
-        list.insert(0, preferred);
+      final itemRole = _inferRole((data['type'] ?? '').toString());
+      final styleTags = _asStringList(data['styleTags'])
+          .map((e) => e.toLowerCase())
+          .toList();
+      final weatherTags = _asStringList(data['weatherTags'])
+          .map((e) => e.toLowerCase())
+          .toList();
+
+      if (itemRole != role) return false;
+
+      if (_styleFilter != 'any' && !styleTags.contains(_styleFilter)) {
+        return false;
       }
-      byRole[role] = list;
-    }
 
-    prioritize('top');
-    prioritize('bottom');
-    prioritize('shoes');
-    prioritize('outerwear');
-
-    final tops = byRole['top']!;
-    final bottoms = byRole['bottom']!;
-    final shoes = byRole['shoes']!;
-    final outer = byRole['outerwear']!;
-    final others = byRole['other']!;
-
-    final candidateIds = <List<String>>[];
-    if (tops.isNotEmpty && bottoms.isNotEmpty) {
-      final topChoices = tops.take(3).toList();
-      final bottomChoices = bottoms.take(3).toList();
-      final shoesChoices = shoes.take(2).toList();
-      final outerChoices = outer.take(2).toList();
-      for (final t in topChoices) {
-        for (final b in bottomChoices) {
-          final base = <String>[t, b];
-          candidateIds.add(base);
-          for (final s in shoesChoices) {
-            candidateIds.add([...base, s]);
-          }
-          if (season == 'winter' || season == 'autumn') {
-            for (final o in outerChoices) {
-              candidateIds.add([...base, o]);
-              for (final s in shoesChoices) {
-                candidateIds.add([...base, o, s]);
-              }
-            }
-          }
-        }
+      if (_weatherFilter != 'any' && !weatherTags.contains(_weatherFilter)) {
+        return false;
       }
-    }
 
-    if (candidateIds.isEmpty) {
-      final fallbackPool = [
-        ...tops,
-        ...bottoms,
-        ...shoes,
-        ...outer,
-        ...others,
-      ];
-      for (var i = 0; i < fallbackPool.length; i++) {
-        candidateIds.add(fallbackPool.skip(i).take(3).toList());
-      }
-    }
+      return true;
+    }).toList();
+  }
 
-    candidateIds.removeWhere((ids) => ids.isEmpty);
-    for (final ids in candidateIds) {
-      final signature = _buildOutfitSignature(ids);
-      if (!recentSignatures.contains(signature)) {
-        return (ids: ids.toSet().toList(), reusedRecent: false);
-      }
-    }
-
-    final fallback = candidateIds.isNotEmpty
-        ? candidateIds.first.toSet().toList()
-        : usableItems.take(3).map((e) => e.key).toList();
-    return (ids: fallback, reusedRecent: true);
+  String? _randomItemId(List<MapEntry<String, Map<String, dynamic>>> items) {
+    if (items.isEmpty) return null;
+    return items[_random.nextInt(items.length)].key;
   }
 
   Future<void> _generateSuggestion() async {
@@ -230,206 +208,53 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     setState(() => _isGenerating = true);
 
     try {
-      const season = 'all';
-      final allItems = _wardrobeCache.entries.toList();
-      var usableItems = allItems.where((entry) {
-        final itemSeason = (entry.value['season'] ?? 'all').toString().toLowerCase();
-        if (season == 'all') return true;
-        return itemSeason == season || itemSeason == 'all';
-      }).toList();
-      bool usedFallback = false;
-      if (usableItems.length < 2) {
-        usableItems = allItems;
-        usedFallback = true;
+      final clothingIds = <String>[];
+
+      if (_pieceFilter == 'any') {
+        final topId = _randomItemId(_filterItems(role: 'top'));
+        final bottomId = _randomItemId(_filterItems(role: 'bottom'));
+        final shoesId = _randomItemId(_filterItems(role: 'shoes'));
+        final outerId = _randomItemId(_filterItems(role: 'outerwear'));
+
+        if (topId != null) clothingIds.add(topId);
+        if (bottomId != null) clothingIds.add(bottomId);
+        if (shoesId != null) clothingIds.add(shoesId);
+
+        // Add outerwear only sometimes, so it feels random
+        if (outerId != null && _random.nextBool()) {
+          clothingIds.add(outerId);
+        }
+      } else {
+        final itemId = _randomItemId(_filterItems(role: _pieceFilter));
+        if (itemId != null) clothingIds.add(itemId);
       }
 
-      final uid = _uid;
-      final ownedIds = usableItems.map((e) => e.key).toSet();
-      final recentSignatures = uid == null
-          ? <String>{}
-          : await _loadRecentOutfitSignatures(uid);
-      if (uid != null) {
-        final aiSuggestionId = await _repository.generateAIOutfit();
-        if (aiSuggestionId != null) {
-          final aiDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .collection('suggestions')
-              .doc(aiSuggestionId)
-              .get();
-          final aiIds = _asStringList(aiDoc.data()?['clothingIds']);
-          final usesOnlyOwned = aiIds.isNotEmpty && aiIds.every(ownedIds.contains);
-          final aiSignature = _buildOutfitSignature(aiIds);
-          final isDuplicateRecent = recentSignatures.contains(aiSignature);
-          if (usesOnlyOwned && !isDuplicateRecent) {
-            await aiDoc.reference.update({
-              'title': 'Outfit suggestion',
-              'source': 'balanced',
-              'status': 'suggested',
-              'outfitSignature': aiSignature,
-              'reasoning': 'Based on your saved style preferences and matched with your wardrobe.',
-            });
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Suggested outfit')),
-            );
-            return;
-          }
-          await aiDoc.reference.delete();
-        }
-      }
-
-      final roleSelections = <String, String>{};
-      String source = 'balanced';
-      String reasoning = 'Fallback suggestion based on your wardrobe.';
-
-      if (uid != null) {
-        final likedSnap = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('likedPosts')
-            .get();
-        final likedPostIds = likedSnap.docs.map((d) => d.id).toSet();
-
-        final postsSnap = await FirebaseFirestore.instance.collection('posts').get();
-        final posts = postsSnap.docs
-            .where((d) => (d.data()['outfitMeta'] is List) && (d.data()['outfitMeta'] as List).isNotEmpty)
-            .toList();
-        posts.sort((a, b) {
-          final aLikes = ((a.data()['likeCount'] ?? a.data()['likes'] ?? 0) as num).toInt();
-          final bLikes = ((b.data()['likeCount'] ?? b.data()['likes'] ?? 0) as num).toInt();
-          return bLikes.compareTo(aLikes);
-        });
-
-        int bestPostScore = -1;
-        Map<String, dynamic>? bestPostData;
-
-        for (final post in posts.take(40)) {
-          final postData = post.data();
-          final metaEntries = (postData['outfitMeta'] as List)
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e.cast<String, dynamic>()))
-              .toList();
-          if (metaEntries.isEmpty) continue;
-
-          final roleBest = <String, Map<String, dynamic>>{};
-          int aggregateScore = 0;
-
-          for (final template in metaEntries) {
-            final templateType = (template['type'] ?? '').toString().toLowerCase();
-            final role = _inferRole(templateType);
-            if (role == 'other') continue;
-            int bestScore = -1;
-            String? bestId;
-            for (final item in usableItems) {
-              final data = item.value;
-              final itemRole = _inferRole((data['type'] ?? '').toString());
-              if (itemRole != role) continue;
-              int score = 0;
-              if (itemRole == role) score += 5;
-              if ((data['color'] ?? '').toString().toLowerCase() ==
-                  (template['color'] ?? '').toString().toLowerCase()) {
-                score += 3;
-              }
-              score += _matchCount(
-                    _asStringList(data['styleTags']),
-                    _asStringList(template['styleTags']),
-                  ) *
-                  3;
-              score += _matchCount(
-                    _asStringList(data['occasionTags']),
-                    _asStringList(template['occasionTags']),
-                  ) *
-                  2;
-              score += _matchCount(
-                    _asStringList(data['weatherTags']),
-                    _asStringList(template['weatherTags']),
-                  ) *
-                  2;
-              if (score > bestScore) {
-                bestScore = score;
-                bestId = item.key;
-              }
-            }
-            if (bestId != null && bestScore >= 5) {
-              roleBest[role] = {'id': bestId, 'score': bestScore};
-              aggregateScore += bestScore;
-            }
-          }
-
-          final likeCount = ((postData['likeCount'] ?? postData['likes'] ?? 0) as num).toInt();
-          aggregateScore += likeCount ~/ 10;
-          if (likedPostIds.contains(post.id)) {
-            aggregateScore += 8;
-          }
-          if (aggregateScore > bestPostScore && roleBest.isNotEmpty) {
-            bestPostScore = aggregateScore;
-            bestPostData = {
-              'post': postData,
-              'roleBest': roleBest,
-            };
-          }
-        }
-
-        if (bestPostData != null) {
-          final roleBest = (bestPostData['roleBest'] as Map<String, dynamic>);
-          roleSelections.addAll(
-            roleBest.map((key, value) => MapEntry(key, (value as Map<String, dynamic>)['id'].toString())),
-          );
-          source = 'balanced';
-          reasoning = 'Inspired by community trends and matched with your wardrobe.';
-        }
-      }
-
-      if (roleSelections.isEmpty) {
-        String? topId;
-        String? bottomId;
-        String? outerId;
-        String? shoesId;
-        for (final entry in usableItems) {
-          final role = _inferRole((entry.value['type'] ?? '').toString());
-          if (topId == null && role == 'top') topId = entry.key;
-          if (bottomId == null && role == 'bottom') bottomId = entry.key;
-          if (outerId == null && role == 'outerwear') outerId = entry.key;
-          if (shoesId == null && role == 'shoes') shoesId = entry.key;
-        }
-        if (topId != null) roleSelections['top'] = topId;
-        if (bottomId != null) roleSelections['bottom'] = bottomId;
-        if (shoesId != null) roleSelections['shoes'] = shoesId;
-        if (outerId != null) {
-          roleSelections['outerwear'] = outerId;
-        }
-      }
-      final dedupPick = _pickOutfitWithDedup(
-        usableItems: usableItems,
-        recentSignatures: recentSignatures,
-        season: season,
-        preferredByRole: roleSelections,
-      );
-      final clothingIds = dedupPick.ids.where(ownedIds.contains).toSet().toList();
       if (clothingIds.isEmpty) {
-        clothingIds.addAll(usableItems.take(3).map((e) => e.key));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No clothes match your selected filters.'),
+          ),
+        );
+        return;
       }
-      final reusedRecent = dedupPick.reusedRecent;
+
       final outfitSignature = _buildOutfitSignature(clothingIds);
 
-      const title = 'Outfit suggestion';
       await _repository.createSuggestion(
-        title: title,
-        clothingIds: clothingIds,
+        title: 'Random outfit suggestion',
+        clothingIds: clothingIds.toSet().toList(),
         outfitSignature: outfitSignature,
-        generatedBy: 'hybrid-community-recommender',
-        source: source,
-        reasoning: reusedRecent
-            ? 'Limited wardrobe options, so a recent combination may be reused.'
-            : roleSelections.isEmpty
-                ? 'Fallback suggestion based on your wardrobe.'
-                : reasoning,
+        generatedBy: 'random-filter-generator',
+        source: 'random',
+        reasoning: _pieceFilter == 'any'
+            ? 'Randomly selected from your wardrobe using your selected filters.'
+            : 'Randomly selected one $_pieceFilter item using your selected filters.',
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Suggested outfit')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Suggested outfit')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -440,70 +265,70 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     }
   }
 
-  Future<void> _showSaveDialog(
-    QueryDocumentSnapshot<Map<String, dynamic>> suggestion,
-  ) async {
-    final data = suggestion.data();
-    final defaultTitle = (data['title'] ?? 'Saved Outfit').toString();
-    final controller = TextEditingController(text: defaultTitle);
+    Future<void> _showSaveDialog(
+      QueryDocumentSnapshot<Map<String, dynamic>> suggestion,
+    ) async {
+      final data = suggestion.data();
+      final defaultTitle = (data['title'] ?? 'Saved Outfit').toString();
+      final controller = TextEditingController(text: defaultTitle);
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Save Outfit'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Outfit name',
-            border: OutlineInputBorder(),
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Save Outfit'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Outfit name',
+              border: OutlineInputBorder(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (confirmed != true || !mounted) return;
+      if (confirmed != true || !mounted) return;
 
-    await _repository.saveSuggestedOutfit(
-      suggestionId: suggestion.id,
-      title: controller.text.trim().isEmpty ? defaultTitle : controller.text.trim(),
-      clothingIds: List<String>.from(data['clothingIds'] ?? []),
-    );
-    controller.dispose();
+      await _repository.saveSuggestedOutfit(
+        suggestionId: suggestion.id,
+        title: controller.text.trim().isEmpty ? defaultTitle : controller.text.trim(),
+        clothingIds: List<String>.from(data['clothingIds'] ?? []),
+      );
+      controller.dispose();
+    }
+    Future<void> _deleteSuggestion(String suggestionId) async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('suggestions')
+          .doc(suggestionId)
+          .delete();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Deleted')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e')),
+      );
+    }
   }
-  Future<void> _deleteSuggestion(String suggestionId) async {
-  final uid = _uid;
-  if (uid == null) return;
-
-  try {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('suggestions')
-        .doc(suggestionId)
-        .delete();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Deleted')),
-    );
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Delete failed: $e')),
-    );
-  }
-}
 
   Future<void> _shareOutfit(Map<String, dynamic> data) async {
     final title = (data['title'] ?? 'My Outfit').toString();
@@ -615,6 +440,88 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                   ),
                 )
               else ...[
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      setState(() => _showAdvanced = !_showAdvanced);
+                    },
+                    icon: Icon(
+                      _showAdvanced ? Icons.expand_less : Icons.tune,
+                      size: 18,
+                    ),
+                    label: const Text('Advanced suggestion'),
+                  ),
+                ),
+
+                if (_showAdvanced)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: _pieceFilter,
+                          decoration: const InputDecoration(
+                            labelText: 'What piece do you want to suggest?',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _pieceOptions.map((value) {
+                            return DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _pieceFilter = value);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _weatherFilter,
+                          decoration: const InputDecoration(
+                            labelText: 'What weather?',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _weatherOptions.map((value) {
+                            return DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _weatherFilter = value);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _styleFilter,
+                          decoration: const InputDecoration(
+                            labelText: 'What style?',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _styleOptions.map((value) {
+                            return DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _styleFilter = value);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
                 SizedBox(
                   width: double.infinity,
                   height: 48,
