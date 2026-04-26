@@ -24,6 +24,7 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
   String? _selectedType;
   String? _selectedColorName;
   bool _isUploading = false;
+  final TextEditingController _customDetailsController = TextEditingController();
 
   final List<String> _clothingTypes = [
     'Top',
@@ -34,8 +35,6 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
     'Accessory',
   ];
 
-  final List<String> _seasons = ['All', 'Spring', 'Summer', 'Autumn', 'Winter'];
-  String _selectedSeason = 'All';
   final List<Color> _colorOptions = [
     Colors.black,
     Colors.grey,
@@ -92,6 +91,7 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
 
   @override
   void dispose() {
+    _customDetailsController.dispose();
     super.dispose();
   }
 
@@ -187,9 +187,10 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
         imageUrl: imageUrl,
         type: _selectedType!.toLowerCase(),
         color: _selectedColorName!,
-        season: _selectedSeason.toLowerCase(),
+        season: 'all',
         styleTags: _selectedStyleTags.toList(),
         weatherTags: _selectedWeatherTags.toList(),
+        customDetails: _customDetailsController.text.trim(),
       );
 
       if (mounted) {
@@ -337,28 +338,20 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
                   ),
                 ),
               const SizedBox(height: 20),
-              const Text('Season', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: _seasons.map((season) {
-                  final selected = _selectedSeason == season;
-                  final onSurface = Theme.of(context).colorScheme.onSurface;
-                  return ChoiceChip(
-                    label: Text(season),
-                    selected: selected,
-                    selectedColor: onSurface,
-                    labelStyle: TextStyle(
-                      color: selected ? Theme.of(context).colorScheme.surface : onSurface,
-                    ),
-                    onSelected: (_) => setState(() => _selectedSeason = season),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 8),
               const Text('Style details (optional)', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _customDetailsController,
+                textInputAction: TextInputAction.done,
+                maxLength: 80,
+                decoration: const InputDecoration(
+                  labelText: 'Custom details (optional)',
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                ),
+              ),
               const SizedBox(height: 12),
               _TagSection(
                 title: 'Style',

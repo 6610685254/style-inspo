@@ -47,6 +47,7 @@ class WardrobeRepository {
     List<String> occasionTags = const [],
     List<String> weatherTags = const [],
     Map<String, dynamic> visionAttributes = const {},
+    String customDetails = '',
   }) async {
     final uid = userId;
     if (uid == null) return;
@@ -60,6 +61,7 @@ class WardrobeRepository {
       'styleTags': styleTags,
       'occasionTags': occasionTags,
       'weatherTags': weatherTags,
+      'customDetails': customDetails,
       'visionAttributes': visionAttributes,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -77,6 +79,7 @@ class WardrobeRepository {
     List<String>? occasionTags,
     List<String>? weatherTags,
     Map<String, dynamic>? visionAttributes,
+    String? customDetails,
   }) async {
     final uid = userId;
     if (uid == null) return;
@@ -90,6 +93,7 @@ class WardrobeRepository {
       if (occasionTags != null) 'occasionTags': occasionTags,
       if (weatherTags != null) 'weatherTags': weatherTags,
       if (visionAttributes != null) 'visionAttributes': visionAttributes,
+      if (customDetails != null) 'customDetails': customDetails,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -218,6 +222,7 @@ class WardrobeRepository {
     List<String> styleTags = const [],
     List<String> occasionTags = const [],
     List<String> weatherTags = const [],
+    String customDetails = '',
   }) async {
     final uid = userId;
     if (uid == null) throw Exception("User not logged in");
@@ -231,6 +236,7 @@ class WardrobeRepository {
       'styleTags': styleTags,
       'occasionTags': occasionTags,
       'weatherTags': weatherTags,
+      'customDetails': customDetails,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

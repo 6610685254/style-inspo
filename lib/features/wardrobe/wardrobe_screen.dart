@@ -60,6 +60,32 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     'purple',
     'brown',
   ];
+  static const List<Color> _formColorOptions = [
+    Colors.black,
+    Colors.grey,
+    Colors.red,
+    Colors.pink,
+    Colors.orange,
+    Colors.yellow,
+    Colors.green,
+    Colors.blue,
+    Colors.purple,
+    Colors.brown,
+    Colors.white,
+  ];
+  static const List<String> _formColorNames = [
+    'black',
+    'grey',
+    'red',
+    'pink',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'purple',
+    'brown',
+    'white',
+  ];
 
   int? _selectedColorIndex;
   Set<String> _selectedTypes = {};
@@ -328,16 +354,20 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
     final data = doc.data();
-    final colorController =
-        TextEditingController(text: data['color']?.toString() ?? '');
     String selectedType = _capitalize(data['type']?.toString() ?? 'Top');
-    String selectedSeason =
-        _capitalize(data['season']?.toString() ?? 'All');
+    int? selectedColorIndex = _formColorNames.indexOf(
+      (data['color'] ?? '').toString().toLowerCase(),
+    );
+    if (selectedColorIndex == -1) {
+      selectedColorIndex = null;
+    }
+    final customDetailsController = TextEditingController(
+      text: data['customDetails']?.toString() ?? '',
+    );
     final selectedStyleTags = _asTagSet(data['styleTags']);
     final selectedWeatherTags = _asTagSet(data['weatherTags']);
 
     final clothingTypes = ['Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory'];
-    final seasons = ['All', 'Spring', 'Summer', 'Autumn', 'Winter'];
 
     await showModalBottomSheet(
       context: context,
@@ -404,42 +434,51 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 const Text('Color',
                     style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: colorController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g., Navy Blue',
-                    border: OutlineInputBorder(),
+                SizedBox(
+                  height: 52,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _formColorOptions.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final isSelected = selectedColorIndex == index;
+                      return GestureDetector(
+                        onTap: () => setSheetState(() => selectedColorIndex = index),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: _formColorOptions[index],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? Colors.black : Colors.grey.shade300,
+                              width: isSelected ? 2.5 : 1.2,
+                            ),
+                          ),
+                          child: _formColorNames[index] == 'white'
+                              ? Center(
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? Colors.black : Colors.grey.shade400,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                      );
+                    },
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Season
-                const Text('Season',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: seasons.map((season) {
-                    final sel = selectedSeason == season;
-                    return ChoiceChip(
-                      label: Text(season),
-                      selected: sel,
-                      selectedColor: onSurface,
-                      labelStyle: TextStyle(
-                        color: sel
-                            ? Theme.of(ctx).colorScheme.surface
-                            : onSurface,
-                      ),
-                      onSelected: (_) =>
-                          setSheetState(() => selectedSeason = season),
-                    );
-                  }).toList(),
                 ),
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 10),
+                const Text('Style details', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
                 _TagEditor(
-                  title: 'Style details',
+                  title: 'Style',
                   options: _styleOptions,
                   selectedValues: selectedStyleTags,
                   onToggle: (value) {
@@ -463,6 +502,17 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     });
                   },
                 ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customDetailsController,
+                  textInputAction: TextInputAction.done,
+                  maxLength: 80,
+                  decoration: const InputDecoration(
+                    labelText: 'Custom details (optional)',
+                    border: OutlineInputBorder(),
+                    counterText: '',
+                  ),
+                ),
                 const SizedBox(height: 24),
 
                 // Save button
@@ -481,10 +531,13 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       await _repository.updateClothingItem(
                         clothingId: doc.id,
                         type: selectedType.toLowerCase(),
-                        color: colorController.text.trim().toLowerCase(),
-                        season: selectedSeason.toLowerCase(),
+                        color: selectedColorIndex == null
+                            ? (data['color'] ?? '').toString().toLowerCase()
+                            : _formColorNames[selectedColorIndex!],
+                        season: 'all',
                         styleTags: selectedStyleTags.toList(),
                         weatherTags: selectedWeatherTags.toList(),
+                        customDetails: customDetailsController.text.trim(),
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                     },
@@ -497,6 +550,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         },
       ),
     );
+    customDetailsController.dispose();
   }
 
   Future<void> _confirmDelete(BuildContext context, String docId) async {
