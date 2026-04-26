@@ -35,8 +35,12 @@ Users catalog what they own (items, colors, fits, occasions). The app pulls tren
 - Sustainability scoring (re-wear rate).
 
 ## Members
-- Teepop Bumbudpai [6610685197](https://github.com/6610685197)
-- Atipat Chungkajonkiat [6610685379](https://github.com/6610685379)
-- Pongsathorn Thongkliang [6610685254](https://github.com/6610685254)
-- Kitttichet Sintaosathapon [6610685106](https://github.com/6610685106)
-- Polthagorn Onthong [6610685262](https://github.com/6610685262)
+
+| Name / ID                           | Profile |
+| :---------------------------------- | :------ |
+| Teepop Bambudpai        6610685197         | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685197) |
+| Atipat Chungkajonkiat   6610685379    | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685379) |
+| Pongsathorn Thongkliang 6610685254  | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685254) |
+| Kittichet Sintaosathapon 6610685106 | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685106) |
+| Polthagorn Onthong      6610685262       | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685262) |
+
