@@ -40,20 +40,63 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool hasSelection = current >= 0 && current <= 3;
     final theme = Theme.of(context);
-    return BottomNavigationBar(
-      currentIndex: hasSelection ? current : 0,
-      onTap: (i) => _onTap(context, i),
-      backgroundColor: theme.colorScheme.surface,
-      selectedItemColor: hasSelection ? theme.colorScheme.onSurface : Colors.grey,
-      unselectedItemColor: Colors.grey,
-      showUnselectedLabels: true,
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.checkroom), label: 'Wardrobe'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Discover'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-      ],
+    final colors = theme.colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(
+          top: BorderSide(
+            color: colors.outline.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: hasSelection ? current : 0,
+        onTap: (i) => _onTap(context, i),
+        backgroundColor: colors.surface,
+        selectedItemColor: hasSelection
+            ? colors.onSurface
+            : colors.onSurface.withOpacity(0.55),
+        unselectedItemColor: colors.onSurface.withOpacity(0.55),
+        selectedLabelStyle: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+        unselectedLabelStyle: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: colors.onSurface.withOpacity(0.55),
+        ),
+        selectedIconTheme: IconThemeData(
+          size: 23,
+          color: hasSelection
+              ? colors.onSurface
+              : colors.onSurface.withOpacity(0.55),
+        ),
+        unselectedIconTheme: IconThemeData(
+          size: 21,
+          color: colors.onSurface.withOpacity(0.55),
+        ),
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.checkroom_rounded), label: 'Wardrobe'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.explore_outlined), label: 'Discover'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        ],
+      ),
     );
   }
 }
