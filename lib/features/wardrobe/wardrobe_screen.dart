@@ -196,9 +196,15 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               itemBuilder: (context, index) {
                 final label = _typeFilterLabels[index];
                 final selected = _selectedTypes.contains(label);
+                final onSurface = Theme.of(context).colorScheme.onSurface;
                 return FilterChip(
                   label: Text(label),
                   selected: selected,
+                  selectedColor: onSurface,
+                  checkmarkColor: selected ? Theme.of(context).colorScheme.surface : null,
+                  labelStyle: TextStyle(
+                    color: selected ? Theme.of(context).colorScheme.surface : onSurface,
+                  ),
                   onSelected: (_) => setState(() {
                     if (selected) {
                       _selectedTypes.remove(label);
