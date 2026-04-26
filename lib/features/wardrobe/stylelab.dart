@@ -110,20 +110,51 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
 
   String _inferRole(String type) {
     final t = type.toLowerCase();
-    if (t.contains('top') || t.contains('shirt') || t.contains('hoodie') || t.contains('tee')) {
+
+    if (t.contains('dress')) {
+      return 'dress';
+    }
+
+    if (t.contains('accessory') ||
+        t.contains('bag') ||
+        t.contains('hat') ||
+        t.contains('cap') ||
+        t.contains('watch') ||
+        t.contains('belt')) {
+      return 'accessory';
+    }
+
+    if (t.contains('top') ||
+        t.contains('shirt') ||
+        t.contains('hoodie') ||
+        t.contains('tee')) {
       return 'top';
     }
-    if (t.contains('bottom') || t.contains('pant') || t.contains('skirt') || t.contains('short') || t.contains('jean')) {
+
+    if (t.contains('bottom') ||
+        t.contains('pant') ||
+        t.contains('skirt') ||
+        t.contains('short') ||
+        t.contains('jean')) {
       return 'bottom';
     }
-    if (t.contains('shoe') || t.contains('sneaker') || t.contains('boot') || t.contains('heel')) {
+
+    if (t.contains('shoe') ||
+        t.contains('sneaker') ||
+        t.contains('boot') ||
+        t.contains('heel')) {
       return 'shoes';
     }
-    if (t.contains('outerwear') || t.contains('jacket') || t.contains('coat') || t.contains('blazer')) {
-      return 'outerwear';
-    }
-    return 'other';
+
+  if (t.contains('outerwear') ||
+      t.contains('jacket') ||
+      t.contains('coat') ||
+      t.contains('blazer')) {
+    return 'outerwear';
   }
+
+  return 'other';
+}
 
   int _matchCount(List<String> a, List<String> b) {
     if (a.isEmpty || b.isEmpty) return 0;
@@ -213,16 +244,39 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
       if (_pieceFilter == 'any') {
         final topId = _randomItemId(_filterItems(role: 'top'));
         final bottomId = _randomItemId(_filterItems(role: 'bottom'));
+        final dressId = _randomItemId(_filterItems(role: 'dress'));
         final shoesId = _randomItemId(_filterItems(role: 'shoes'));
         final outerId = _randomItemId(_filterItems(role: 'outerwear'));
+        final accessoryId = _randomItemId(_filterItems(role: 'accessory'));
 
-        if (topId != null) clothingIds.add(topId);
-        if (bottomId != null) clothingIds.add(bottomId);
-        if (shoesId != null) clothingIds.add(shoesId);
+        final useDress = dressId != null && _random.nextBool();
 
-        // Add outerwear only sometimes, so it feels random
-        if (outerId != null && _random.nextBool()) {
-          clothingIds.add(outerId);
+        if (useDress) {
+          clothingIds.add(dressId);
+
+          if (shoesId != null) {
+            clothingIds.add(shoesId);
+          }
+
+          if (outerId != null && _random.nextBool()) {
+            clothingIds.add(outerId);
+          }
+
+          if (accessoryId != null) {
+            clothingIds.add(accessoryId);
+          }
+        } else {
+          if (topId != null) clothingIds.add(topId);
+          if (bottomId != null) clothingIds.add(bottomId);
+          if (shoesId != null) clothingIds.add(shoesId);
+
+          if (outerId != null && _random.nextBool()) {
+            clothingIds.add(outerId);
+          }
+
+          if (accessoryId != null && _random.nextBool()) {
+            clothingIds.add(accessoryId);
+          }
         }
       } else {
         final itemId = _randomItemId(_filterItems(role: _pieceFilter));
@@ -576,7 +630,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
                       .map((id) =>
                           (_wardrobeCache[id]?['imageUrl'] as String?) ?? '')
                       .where((u) => u.isNotEmpty)
-                      .take(3)
+                      .take(5)
                       .toList();
 
                   return Container(
@@ -706,7 +760,7 @@ class _OutfitCard extends StatelessWidget {
             SizedBox(
               height: 130,
               child: Row(
-                children: imageUrls.take(3).map((url) {
+                children: imageUrls.take(5).map((url) {
                   return Expanded(
                     child: Image.network(
                       url,
