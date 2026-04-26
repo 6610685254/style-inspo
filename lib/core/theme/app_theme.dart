@@ -1,15 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
+  static const Color warmBackground = Color(0xFFF9F3ED);
+  static const Color warmCard = Color(0xFFFFFBF7);
+  static const Color espresso = Color(0xFF2C211C);
+  static const Color softTaupe = Color(0xFFD8C6B8);
+  static const Color dustyRose = Color(0xFFB88D86);
+
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
-    scaffoldBackgroundColor: Colors.white,
-    appBarTheme: const AppBarTheme(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: dustyRose,
+      brightness: Brightness.light,
+    ).copyWith(
+      surface: warmCard,
+      onSurface: espresso,
+      primary: espresso,
+      onPrimary: warmCard,
+      secondary: dustyRose,
+      outline: softTaupe,
+    ),
+    scaffoldBackgroundColor: warmBackground,
+    textTheme: GoogleFonts.interTextTheme().copyWith(
+      headlineLarge: GoogleFonts.playfairDisplay(
+        fontSize: 34,
+        fontWeight: FontWeight.w600,
+        color: espresso,
+      ),
+      headlineMedium: GoogleFonts.playfairDisplay(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        color: espresso,
+      ),
+      titleLarge: GoogleFonts.playfairDisplay(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: espresso,
+      ),
+      titleMedium: GoogleFonts.playfairDisplay(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: espresso,
+      ),
+      bodyLarge: GoogleFonts.inter(color: espresso),
+      bodyMedium: GoogleFonts.inter(color: espresso),
+      labelLarge: GoogleFonts.inter(
+        color: espresso,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    appBarTheme: AppBarTheme(
       centerTitle: true,
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
+      backgroundColor: warmBackground,
+      foregroundColor: espresso,
       elevation: 0,
+      titleTextStyle: GoogleFonts.playfairDisplay(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        color: espresso,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      color: warmCard,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: softTaupe),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: warmCard,
+      selectedColor: espresso,
+      secondarySelectedColor: espresso,
+      disabledColor: softTaupe,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      side: const BorderSide(color: softTaupe),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      labelStyle: GoogleFonts.inter(color: espresso, fontSize: 13),
+      secondaryLabelStyle: GoogleFonts.inter(color: warmCard, fontSize: 13),
+      brightness: Brightness.light,
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: espresso,
+        side: const BorderSide(color: softTaupe),
+        backgroundColor: warmCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: espresso,
+      foregroundColor: warmCard,
     ),
   );
 
@@ -17,50 +99,8 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.grey,
+      seedColor: dustyRose,
       brightness: Brightness.dark,
-    ).copyWith(
-      surface: const Color(0xFF1E1E1E),
-      onSurface: Colors.white,
-      primary: Colors.white,
-      onPrimary: Colors.black,
-      secondary: Colors.grey.shade400,
-      onSecondary: Colors.black,
     ),
-    scaffoldBackgroundColor: const Color(0xFF121212),
-    appBarTheme: const AppBarTheme(
-      centerTitle: true,
-      backgroundColor: Color(0xFF121212),
-      foregroundColor: Colors.white,
-      elevation: 0,
-    ),
-    cardTheme: const CardThemeData(
-      color: Color(0xFF1E1E1E),
-    ),
-    drawerTheme: const DrawerThemeData(
-      backgroundColor: Color(0xFF1E1E1E),
-    ),
-    listTileTheme: const ListTileThemeData(
-      textColor: Colors.white,
-      iconColor: Colors.white70,
-    ),
-    inputDecorationTheme: const InputDecorationTheme(
-      labelStyle: TextStyle(color: Colors.grey),
-      enabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.grey),
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-      ),
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFF1E1E1E),
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.grey,
-    ),
-    dividerColor: Colors.grey.shade800,
   );
 }
