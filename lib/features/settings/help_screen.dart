@@ -12,7 +12,7 @@ class HelpScreen extends StatelessWidget {
     {
       'q': 'How does the AI outfit suggestion work?',
       'a':
-          'Open Styles Lab and tap "Suggest New Outfit". The AI analyzes your wardrobe and generates a matching outfit for you.',
+          'Open Styles Lab and tap "Suggest Outfit". The AI analyzes your wardrobe and generates a matching outfit for you.',
     },
     {
       'q': 'How do I plan outfits for the week?',
@@ -49,8 +49,10 @@ class HelpScreen extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Text(faq['a']!,
-                    style: TextStyle(color: Colors.grey.shade700)),
+                child: Text(
+                  faq['a']!,
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
               ),
             ],
           );
