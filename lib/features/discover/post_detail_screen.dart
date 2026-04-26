@@ -130,7 +130,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       try {
         await likeRef.delete();
         await userLikeRef.delete();
-        await postRef.update({'likes': _likeCount});
+        await postRef.update({'likes': _likeCount, 'likeCount': _likeCount});
       } catch (_) {}
     } else {
       setState(() {
@@ -143,8 +143,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           'postId': widget.postId,
           'likedAt': FieldValue.serverTimestamp(),
           'imageUrl': _postData['imageUrl'] ?? '',
+          'outfitMeta': _postData['outfitMeta'] ?? [],
         });
-        await postRef.update({'likes': _likeCount});
+        await postRef.update({'likes': _likeCount, 'likeCount': _likeCount});
       } catch (_) {}
     }
   }
@@ -682,6 +683,31 @@ class _EditPostSheetState extends State<_EditPostSheet> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final outfitMeta = <Map<String, dynamic>>[];
+      List<String> asList(dynamic value) => value is List
+          ? value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          : <String>[];
+      if (uid != null) {
+        for (final clothingId in _selectedWardrobe.keys) {
+          final clothingDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('clothes')
+              .doc(clothingId)
+              .get();
+          if (!clothingDoc.exists) continue;
+          final data = clothingDoc.data() ?? {};
+          outfitMeta.add({
+            'clothingId': clothingId,
+            'type': (data['type'] ?? '').toString(),
+            'color': (data['color'] ?? '').toString(),
+            'styleTags': asList(data['styleTags']),
+            'occasionTags': asList(data['occasionTags']),
+            'weatherTags': asList(data['weatherTags']),
+          });
+        }
+      }
       await FirebaseFirestore.instance
           .collection('posts')
           .doc(widget.postId)
@@ -691,6 +717,7 @@ class _EditPostSheetState extends State<_EditPostSheet> {
         'wardrobeItemIds': _selectedWardrobe.keys.toList(),
         'savedOutfits': _selectedOutfits.values.toList(),
         'savedOutfitIds': _selectedOutfits.keys.toList(),
+        'outfitMeta': outfitMeta,
         'editedAt': FieldValue.serverTimestamp(),
       });
       if (mounted) Navigator.pop(context);
