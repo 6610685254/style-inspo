@@ -422,10 +422,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               top: 20,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -455,6 +456,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       label: Text(type),
                       selected: sel,
                       selectedColor: onSurface,
+                      checkmarkColor: sel ? Theme.of(ctx).colorScheme.surface : null,
                       labelStyle: TextStyle(
                         color: sel
                             ? Theme.of(ctx).colorScheme.surface
@@ -582,12 +584,17 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                   ),
                 ),
               ],
+              ),
             ),
           );
         },
       ),
     );
-    customDetailsController.dispose();
+    // Delay disposal to allow the bottom sheet close animation to finish
+    // and avoid the '_dependents.isEmpty' assertion error.
+    Future.delayed(const Duration(milliseconds: 300), () {
+      customDetailsController.dispose();
+    });
   }
 
   Future<void> _confirmDelete(BuildContext context, String docId) async {
@@ -644,6 +651,7 @@ class _TagEditor extends StatelessWidget {
               label: Text(option),
               selected: selected,
               selectedColor: onSurface,
+              checkmarkColor: selected ? Theme.of(context).colorScheme.surface : null,
               labelStyle: TextStyle(
                 color: selected ? Theme.of(context).colorScheme.surface : onSurface,
               ),

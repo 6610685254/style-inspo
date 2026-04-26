@@ -265,6 +265,7 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
                     label: Text(type),
                     selected: selected,
                     selectedColor: onSurface,
+                    checkmarkColor: selected ? Theme.of(context).colorScheme.surface : null,
                     labelStyle: TextStyle(
                       color: selected ? Theme.of(context).colorScheme.surface : onSurface,
                     ),
@@ -436,6 +437,7 @@ class _TagSection extends StatelessWidget {
               label: Text(option),
               selected: isSelected,
               selectedColor: onSurface,
+              checkmarkColor: isSelected ? Theme.of(context).colorScheme.surface : null,
               labelStyle: TextStyle(
                 color: isSelected ? Theme.of(context).colorScheme.surface : onSurface,
               ),
