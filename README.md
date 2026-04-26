@@ -5,7 +5,7 @@ An app concept that suggests outfits based on current trends and what a user alr
 ## Core idea
 Users catalog what they own (items, colors, fits, occasions). The app pulls trend signals (e.g., trending colors, silhouettes, or patterns) and generates outfit suggestions that:
 - Prioritize items the user already owns.
-- Fill gaps with optional “wish-list” items that match trends.
+- Fill gaps with optional "wish-list" items that match trends.
 - Offer alternatives for weather, occasion, and personal style preferences.
 
 ## Key features
@@ -13,12 +13,12 @@ Users catalog what they own (items, colors, fits, occasions). The app pulls tren
 - **Trend engine**: Weekly trend signals for colors, fabrics, and silhouettes.
 - **Outfit builder**: Combine tops/bottoms/layers/shoes/accessories into a coherent look.
 - **Personalization**: Adjust for climate, comfort, style goals (casual, smart, streetwear, etc.).
-- **Explainability**: Show why each recommendation fits trends and the user’s closet.
+- **Explainability**: Show why each recommendation fits trends and the user's closet.
 - **Social layer**: Share outfits, follow friends/creators, and get feedback or reactions.
 
 ## Example flow
 1. User scans or adds wardrobe items.
-2. App fetches trend data (e.g., “earth tones”, “oversized blazers”).
+2. App fetches trend data (e.g., "earth tones", "oversized blazers").
 3. App recommends 3–5 outfits using owned items.
 4. Optional: suggest 1–2 add-on items that would complete a trend look.
 
@@ -33,3 +33,14 @@ Users catalog what they own (items, colors, fits, occasions). The app pulls tren
 - Social challenges, style boards, and community-curated looks.
 - Budget-aware shopping recommendations.
 - Sustainability scoring (re-wear rate).
+
+## Members
+
+| Name / ID                           | Profile |
+| :---------------------------------- | :------ |
+| Teepop Bambudpai        6610685197         | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685197) |
+| Atipat Chungkajonkiat   6610685379    | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685379) |
+| Pongsathorn Thongkliang 6610685254  | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685254) |
+| Kittichet Sintaosathapon 6610685106 | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685106) |
+| Polthagorn Onthong      6610685262       | [![Profile](https://img.shields.io/badge/github-profile?style=for-the-badge&logo=github&color=black)](https://github.com/6610685262) |
+
