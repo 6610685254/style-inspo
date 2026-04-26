@@ -46,6 +46,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     Colors.blue,
     Colors.purple,
     Colors.brown,
+    Colors.white,
   ];
 
   final List<String> _filterColorNames = [
@@ -59,6 +60,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     'blue',
     'purple',
     'brown',
+    'white',
   ];
   static const List<Color> _formColorOptions = [
     Colors.black,
@@ -165,6 +167,18 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         width: selected ? 2.5 : 1,
                       ),
                     ),
+                    child: _filterColorNames[index] == 'white'
+                        ? Center(
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: selected ? Colors.black : Colors.grey.shade400,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          )
+                        : null,
                   ),
                 );
               },
