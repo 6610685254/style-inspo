@@ -1,9 +1,10 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'wardrobe_repository.dart';
 
 class AddWardrobeScreen extends StatefulWidget {
@@ -20,17 +21,11 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
   final ImagePicker _picker = ImagePicker();
 
   File? _imageFile;
-
-  @override
-  void initState() {
-    super.initState();
-    _imageFile = widget.initialImage;
-  }
   String? _selectedType;
-  final TextEditingController _colorController = TextEditingController();
+  String? _selectedColorName;
   bool _isUploading = false;
+  final TextEditingController _customDetailsController = TextEditingController();
 
-  // Predefined types for consistency. You can add more.
   final List<String> _clothingTypes = [
     'Top',
     'Bottom',
@@ -40,29 +35,76 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
     'Accessory',
   ];
 
-  final List<String> _seasons = ['All', 'Spring', 'Summer', 'Autumn', 'Winter'];
-  String _selectedSeason = 'All';
+  final List<Color> _colorOptions = [
+    Colors.black,
+    Colors.grey,
+    Colors.red,
+    Colors.pink,
+    Colors.orange,
+    Colors.yellow,
+    Colors.green,
+    Colors.blue,
+    Colors.purple,
+    Colors.brown,
+    Colors.white,
+  ];
+  final List<String> _colorNames = [
+    'black',
+    'grey',
+    'red',
+    'pink',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'purple',
+    'brown',
+    'white',
+  ];
+
+  final Set<String> _selectedStyleTags = {};
+  final Set<String> _selectedWeatherTags = {};
+
+  final List<String> _styleOptions = const [
+    'casual',
+    'minimal',
+    'street',
+    'formal',
+    'sporty',
+    'cute',
+    'vintage',
+  ];
+
+  final List<String> _weatherOptions = const [
+    'hot',
+    'rainy',
+    'cold',
+    'indoor',
+    'outdoor',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFile = widget.initialImage;
+  }
 
   @override
   void dispose() {
-    _colorController.dispose();
+    _customDetailsController.dispose();
     super.dispose();
   }
-
-  // --- Logic to Pick Images ---
 
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
-        maxWidth: 1080, // Compress large images appropriately
+        maxWidth: 1080,
         maxHeight: 1080,
         imageQuality: 85,
       );
       if (pickedFile != null) {
-        setState(() {
-          _imageFile = File(pickedFile.path);
-        });
+        setState(() => _imageFile = File(pickedFile.path));
       }
     } catch (e) {
       _showSnackBar('Failed to pick image: $e');
@@ -99,8 +141,6 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
     );
   }
 
-  // --- Logic to Upload and Save ---
-
   Future<String?> _uploadImageToStorage(File image) async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
@@ -109,8 +149,7 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
     }
 
     final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ref = FirebaseStorage.instance
-        .ref('users/$userId/clothes_images/$fileName');
+    final ref = FirebaseStorage.instance.ref('users/$userId/clothes_images/$fileName');
 
     try {
       await ref.putFile(image);
@@ -125,32 +164,33 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
   }
 
   Future<void> _saveItem() async {
-    // Validate image
     if (_imageFile == null) {
       _showSnackBar('Please select an image first.');
       return;
     }
-
-    // Validate category (not part of the Form, so check manually)
     if (_selectedType == null) {
       _showSnackBar('Please select a category.');
       return;
     }
-
-    // Validate color field
-    if (!_formKey.currentState!.validate()) return;
+    if (_selectedColorName == null) {
+      _showSnackBar('Please select a color.');
+      return;
+    }
 
     setState(() => _isUploading = true);
 
     try {
       final imageUrl = await _uploadImageToStorage(_imageFile!);
-      if (imageUrl == null) return; // error already shown via snackbar
+      if (imageUrl == null) return;
 
       await _repository.addClothingItem(
         imageUrl: imageUrl,
         type: _selectedType!.toLowerCase(),
-        color: _colorController.text.trim().toLowerCase(),
-        season: _selectedSeason.toLowerCase(),
+        color: _selectedColorName!,
+        season: 'all',
+        styleTags: _selectedStyleTags.toList(),
+        weatherTags: _selectedWeatherTags.toList(),
+        customDetails: _customDetailsController.text.trim(),
       );
 
       if (mounted) {
@@ -166,12 +206,8 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
-
-  // --- UI Build ---
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +220,6 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Photo picker area
               GestureDetector(
                 onTap: _showOptionsBottomSheet,
                 child: Container(
@@ -194,24 +229,24 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                     image: _imageFile != null
-                        ? DecorationImage(
-                            image: FileImage(_imageFile!),
-                            fit: BoxFit.cover,
-                          )
+                        ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
                         : null,
                   ),
                   child: _imageFile == null
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_a_photo_outlined,
-                                size: 48,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.add_a_photo_outlined,
+                              size: 48,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               'Choose your photo',
                               style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
                         )
@@ -219,10 +254,7 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Add to (category chips)
-              const Text('Add to',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('Add to', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -233,10 +265,9 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
                     label: Text(type),
                     selected: selected,
                     selectedColor: onSurface,
+                    checkmarkColor: selected ? Theme.of(context).colorScheme.surface : null,
                     labelStyle: TextStyle(
-                      color: selected
-                          ? Theme.of(context).colorScheme.surface
-                          : onSurface,
+                      color: selected ? Theme.of(context).colorScheme.surface : onSurface,
                     ),
                     onSelected: (_) => setState(() => _selectedType = type),
                   );
@@ -245,54 +276,110 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
               if (_selectedType == null)
                 const Padding(
                   padding: EdgeInsets.only(top: 4),
-                  child: Text('Please select a category',
-                      style: TextStyle(color: Colors.red, fontSize: 12)),
+                  child: Text(
+                    'Please select a category',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
                 ),
               const SizedBox(height: 20),
-
-              // Color field
-              const Text('What color?',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('What color?', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _colorController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g., Navy Blue',
-                  border: OutlineInputBorder(),
+              SizedBox(
+                height: 52,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _colorOptions.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final isSelected = _selectedColorName == _colorNames[index];
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedColorName = _colorNames[index]),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: _colorOptions[index],
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? Colors.black : Colors.grey.shade300,
+                            width: isSelected ? 2.5 : 1.2,
+                          ),
+                        ),
+                        child: _colorNames[index] == 'white'
+                            ? Center(
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? Colors.black : Colors.grey.shade400,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                    );
+                  },
                 ),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty)
-                        ? 'Please enter a color'
-                        : null,
               ),
+              if (_selectedColorName == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Please select a color',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Selected: ${_selectedColorName!}',
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                  ),
+                ),
               const SizedBox(height: 20),
-
-              // Season
-              const Text('Season',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Divider(),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: _seasons.map((season) {
-                  final selected = _selectedSeason == season;
-                  final onSurface = Theme.of(context).colorScheme.onSurface;
-                  return ChoiceChip(
-                    label: Text(season),
-                    selected: selected,
-                    selectedColor: onSurface,
-                    labelStyle: TextStyle(
-                      color: selected
-                          ? Theme.of(context).colorScheme.surface
-                          : onSurface,
-                    ),
-                    onSelected: (_) =>
-                        setState(() => _selectedSeason = season),
-                  );
-                }).toList(),
+              const Text('Style details (optional)', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _customDetailsController,
+                textInputAction: TextInputAction.done,
+                maxLength: 80,
+                decoration: const InputDecoration(
+                  labelText: 'Custom details (optional)',
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 12),
+              _TagSection(
+                title: 'Style',
+                options: _styleOptions,
+                selectedTags: _selectedStyleTags,
+                onToggle: (value) {
+                  setState(() {
+                    _selectedStyleTags.contains(value)
+                        ? _selectedStyleTags.remove(value)
+                        : _selectedStyleTags.add(value);
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              _TagSection(
+                title: 'Weather',
+                options: _weatherOptions,
+                selectedTags: _selectedWeatherTags,
+                onToggle: (value) {
+                  setState(() {
+                    _selectedWeatherTags.contains(value)
+                        ? _selectedWeatherTags.remove(value)
+                        : _selectedWeatherTags.add(value);
+                  });
+                },
               ),
               const SizedBox(height: 32),
-
-              // Add button
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -301,16 +388,13 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isUploading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Add', style: TextStyle(fontSize: 16)),
                 ),
@@ -319,6 +403,49 @@ class _AddWardrobeScreenState extends State<AddWardrobeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TagSection extends StatelessWidget {
+  const _TagSection({
+    required this.title,
+    required this.options,
+    required this.selectedTags,
+    required this.onToggle,
+  });
+
+  final String title;
+  final List<String> options;
+  final Set<String> selectedTags;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final isSelected = selectedTags.contains(option);
+            return FilterChip(
+              label: Text(option),
+              selected: isSelected,
+              selectedColor: onSurface,
+              checkmarkColor: isSelected ? Theme.of(context).colorScheme.surface : null,
+              labelStyle: TextStyle(
+                color: isSelected ? Theme.of(context).colorScheme.surface : onSurface,
+              ),
+              onSelected: (_) => onToggle(option),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

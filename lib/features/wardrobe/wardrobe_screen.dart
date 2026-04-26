@@ -14,6 +14,22 @@ class WardrobeScreen extends StatefulWidget {
 
 class _WardrobeScreenState extends State<WardrobeScreen> {
   final WardrobeRepository _repository = WardrobeRepository();
+  static const List<String> _styleOptions = [
+    'casual',
+    'minimal',
+    'street',
+    'formal',
+    'sporty',
+    'cute',
+    'vintage',
+  ];
+  static const List<String> _weatherOptions = [
+    'hot',
+    'rainy',
+    'cold',
+    'indoor',
+    'outdoor',
+  ];
 
   static const List<String> _typeFilterLabels = [
     'Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory',
@@ -30,6 +46,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     Colors.blue,
     Colors.purple,
     Colors.brown,
+    Colors.white,
   ];
 
   final List<String> _filterColorNames = [
@@ -43,6 +60,33 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     'blue',
     'purple',
     'brown',
+    'white',
+  ];
+  static const List<Color> _formColorOptions = [
+    Colors.black,
+    Colors.grey,
+    Colors.red,
+    Colors.pink,
+    Colors.orange,
+    Colors.yellow,
+    Colors.green,
+    Colors.blue,
+    Colors.purple,
+    Colors.brown,
+    Colors.white,
+  ];
+  static const List<String> _formColorNames = [
+    'black',
+    'grey',
+    'red',
+    'pink',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'purple',
+    'brown',
+    'white',
   ];
 
   int? _selectedColorIndex;
@@ -123,6 +167,18 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         width: selected ? 2.5 : 1,
                       ),
                     ),
+                    child: _filterColorNames[index] == 'white'
+                        ? Center(
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: selected ? Colors.black : Colors.grey.shade400,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          )
+                        : null,
                   ),
                 );
               },
@@ -247,8 +303,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               onLongPress: () => _confirmDelete(context, doc.id),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline,
+                                  ),
                                 ),
                                 clipBehavior: Clip.antiAlias,
                                 child: Stack(
@@ -259,11 +318,29 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                         imageUrl,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.checkroom,
-                                                size: 32),
+                                            const Icon(Icons.checkroom, size: 32),
                                       )
                                     else
                                       const Icon(Icons.checkroom, size: 32),
+                                    Positioned(
+                                      top: 6,
+                                      right: 6,
+                                      child: GestureDetector(
+                                        onTap: () => _showEditSheet(context, doc),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.45),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.edit_outlined,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                     if (color.isNotEmpty)
                                       Positioned(
                                         bottom: 6,
@@ -275,7 +352,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                             color: _nameToColor(color),
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                                color: Colors.white, width: 1),
+                                              color: Colors.white,
+                                              width: 1,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -300,20 +379,32 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  Set<String> _asTagSet(dynamic value) {
+    if (value is List) {
+      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toSet();
+    }
+    return <String>{};
+  }
 
   Future<void> _showEditSheet(
     BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
     final data = doc.data();
-    final colorController =
-        TextEditingController(text: data['color']?.toString() ?? '');
     String selectedType = _capitalize(data['type']?.toString() ?? 'Top');
-    String selectedSeason =
-        _capitalize(data['season']?.toString() ?? 'All');
+    int? selectedColorIndex = _formColorNames.indexOf(
+      (data['color'] ?? '').toString().toLowerCase(),
+    );
+    if (selectedColorIndex == -1) {
+      selectedColorIndex = null;
+    }
+    final customDetailsController = TextEditingController(
+      text: data['customDetails']?.toString() ?? '',
+    );
+    final selectedStyleTags = _asTagSet(data['styleTags']);
+    final selectedWeatherTags = _asTagSet(data['weatherTags']);
 
     final clothingTypes = ['Top', 'Bottom', 'Shoes', 'Outerwear', 'Dress', 'Accessory'];
-    final seasons = ['All', 'Spring', 'Summer', 'Autumn', 'Winter'];
 
     await showModalBottomSheet(
       context: context,
@@ -331,10 +422,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               top: 20,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -364,6 +456,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       label: Text(type),
                       selected: sel,
                       selectedColor: onSurface,
+                      checkmarkColor: sel ? Theme.of(ctx).colorScheme.surface : null,
                       labelStyle: TextStyle(
                         color: sel
                             ? Theme.of(ctx).colorScheme.surface
@@ -380,36 +473,84 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 const Text('Color',
                     style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: colorController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g., Navy Blue',
-                    border: OutlineInputBorder(),
+                SizedBox(
+                  height: 52,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _formColorOptions.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final isSelected = selectedColorIndex == index;
+                      return GestureDetector(
+                        onTap: () => setSheetState(() => selectedColorIndex = index),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: _formColorOptions[index],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? Colors.black : Colors.grey.shade300,
+                              width: isSelected ? 2.5 : 1.2,
+                            ),
+                          ),
+                          child: _formColorNames[index] == 'white'
+                              ? Center(
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? Colors.black : Colors.grey.shade400,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Season
-                const Text('Season',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: seasons.map((season) {
-                    final sel = selectedSeason == season;
-                    return ChoiceChip(
-                      label: Text(season),
-                      selected: sel,
-                      selectedColor: onSurface,
-                      labelStyle: TextStyle(
-                        color: sel
-                            ? Theme.of(ctx).colorScheme.surface
-                            : onSurface,
-                      ),
-                      onSelected: (_) =>
-                          setSheetState(() => selectedSeason = season),
-                    );
-                  }).toList(),
+                const Divider(),
+                const SizedBox(height: 10),
+                const Text('Style details', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                _TagEditor(
+                  title: 'Style',
+                  options: _styleOptions,
+                  selectedValues: selectedStyleTags,
+                  onToggle: (value) {
+                    setSheetState(() {
+                      selectedStyleTags.contains(value)
+                          ? selectedStyleTags.remove(value)
+                          : selectedStyleTags.add(value);
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                _TagEditor(
+                  title: 'Weather',
+                  options: _weatherOptions,
+                  selectedValues: selectedWeatherTags,
+                  onToggle: (value) {
+                    setSheetState(() {
+                      selectedWeatherTags.contains(value)
+                          ? selectedWeatherTags.remove(value)
+                          : selectedWeatherTags.add(value);
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customDetailsController,
+                  textInputAction: TextInputAction.done,
+                  maxLength: 80,
+                  decoration: const InputDecoration(
+                    labelText: 'Custom details (optional)',
+                    border: OutlineInputBorder(),
+                    counterText: '',
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -429,8 +570,13 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       await _repository.updateClothingItem(
                         clothingId: doc.id,
                         type: selectedType.toLowerCase(),
-                        color: colorController.text.trim().toLowerCase(),
-                        season: selectedSeason.toLowerCase(),
+                        color: selectedColorIndex == null
+                            ? (data['color'] ?? '').toString().toLowerCase()
+                            : _formColorNames[selectedColorIndex!],
+                        season: 'all',
+                        styleTags: selectedStyleTags.toList(),
+                        weatherTags: selectedWeatherTags.toList(),
+                        customDetails: customDetailsController.text.trim(),
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                     },
@@ -438,11 +584,17 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                   ),
                 ),
               ],
+              ),
             ),
           );
         },
       ),
     );
+    // Delay disposal to allow the bottom sheet close animation to finish
+    // and avoid the '_dependents.isEmpty' assertion error.
+    Future.delayed(const Duration(milliseconds: 300), () {
+      customDetailsController.dispose();
+    });
   }
 
   Future<void> _confirmDelete(BuildContext context, String docId) async {
@@ -466,5 +618,48 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     if (confirmed == true) {
       await _repository.deleteClothingItem(docId);
     }
+  }
+}
+
+class _TagEditor extends StatelessWidget {
+  const _TagEditor({
+    required this.title,
+    required this.options,
+    required this.selectedValues,
+    required this.onToggle,
+  });
+
+  final String title;
+  final List<String> options;
+  final Set<String> selectedValues;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final selected = selectedValues.contains(option);
+            return FilterChip(
+              label: Text(option),
+              selected: selected,
+              selectedColor: onSurface,
+              checkmarkColor: selected ? Theme.of(context).colorScheme.surface : null,
+              labelStyle: TextStyle(
+                color: selected ? Theme.of(context).colorScheme.surface : onSurface,
+              ),
+              onSelected: (_) => onToggle(option),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }
