@@ -156,6 +156,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
   return 'other';
 }
 
+  // ignore: unused_element
   int _matchCount(List<String> a, List<String> b) {
     if (a.isEmpty || b.isEmpty) return 0;
     return a.toSet().intersection(b.toSet()).length;
@@ -166,6 +167,7 @@ class _StyleLabScreenState extends State<StyleLabScreen> {
     return normalized.join('|');
   }
 
+  // ignore: unused_element
   Future<Set<String>> _loadRecentOutfitSignatures(String uid) async {
     final now = DateTime.now();
     final cutoff = now.subtract(const Duration(days: 7));
